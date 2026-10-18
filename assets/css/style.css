@@ -121,7 +121,8 @@ p { margin: 0 0 1em; }
 .tool-label { display: inline; }
 
 @media (max-width: 1080px) {
-  .header-inner { height: 68px; grid-template-columns: 44px 1fr auto; gap: 8px; }
+  .header-inner { height: 68px; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 8px; }
+  .logo { min-width: 0; }
   .menu-toggle { display: block; }
   .logo { justify-self: center; }
   .logo-text { font-size: 20px; }
@@ -140,7 +141,14 @@ p { margin: 0 0 1em; }
   .nav-open .menu-toggle span:nth-child(2) { transform: translateY(-3.5px) rotate(-45deg); }
   .nav-open { overflow: hidden; }
 }
-@media (max-width: 380px) { .logo-text { font-size: 17px; } }
+@media (max-width: 420px) {
+  .logo-text { font-size: 15px; letter-spacing: .03em; }
+  .logo svg { width: 18px; height: 18px; }
+  .logo { gap: 7px; }
+  .header-tools { gap: 12px; }
+}
+@media (max-width: 330px) { .logo-text { display: none; } .logo svg { width: 26px; height: 26px; } }
+.product > *, .cart-layout > *, .split > * { min-width: 0; }
 
 /* Photo placeholders — clean slots that name the shot needed */
 .ph {
