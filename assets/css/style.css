@@ -404,3 +404,18 @@ p { margin: 0 0 1em; }
   .reveal { opacity: 1; transform: none; transition: none; }
   html { scroll-behavior: auto; }
 }
+
+/* Photos */
+.pic { position: relative; overflow: hidden; background: #ECE7DF; }
+.pic img { width: 100%; height: 100%; object-fit: cover; transition: transform 1.2s ease, opacity .5s; }
+.collection-card:hover .pic img, .product-card:hover .pic img { transform: scale(1.03); }
+.product-card .ph-alt .pic { position: absolute; inset: 0; }
+.hero .pic::after { content: ""; position: absolute; inset: 0; background: radial-gradient(70% 55% at 50% 52%, rgba(35,28,22,.38), rgba(35,28,22,.12) 100%); }
+.hero h1 { color: #FFFDF9; text-shadow: 0 1px 24px rgba(0,0,0,.18); }
+.hero .ratio-hero { height: min(88vh, 900px); min-height: 520px; }
+.gallery-thumbs button { opacity: .75; transition: opacity .2s; }
+.gallery-thumbs button[aria-current="true"], .gallery-thumbs button:hover { opacity: 1; }
+.lightbox img { max-width: min(94vw, 1400px); max-height: 90vh; width: auto; height: auto; object-fit: contain; }
+.cart-item .pic { aspect-ratio: 4 / 5; }
+.footer-legal a { border-bottom: 1px solid currentColor; }
+.btn[disabled], .btn[disabled]:hover { background: transparent; border-color: var(--line); color: var(--muted); cursor: not-allowed; }

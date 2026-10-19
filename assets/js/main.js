@@ -1,49 +1,15 @@
-/* Al Qamar Threads — mock-up behaviour: nav, cart, gallery, forms */
+/* Al Qamar Threads — mock-up behaviour: nav, cart, gallery, forms. Needs catalog.js. */
 (function () {
   "use strict";
 
-  // Sample catalogue. Real names, sizes and prices come from WooCommerce on build.
-  var PRODUCTS = {
-    "moon-bath-towel": {
-      name: "Moon™ Bath Towel", colour: "White", ph: "moon", url: "product-moon-bath-towel.html",
-      sizes: [
-        { label: "Hand towel 50 × 90 cm", price: 14 },
-        { label: "Bath towel 70 × 140 cm", price: 24 },
-        { label: "Bath sheet 90 × 160 cm", price: 32 }
-      ]
-    },
-    "moon-towel-set": {
-      name: "Moon™ 3-Piece Towel Set", colour: "White", ph: "moon", url: "product-moon-towel-set.html",
-      sizes: [{ label: "3-piece set", price: 42 }]
-    },
-    "dune-bath-towel": {
-      name: "Dune™ Bath Towel", colour: "Apricot", ph: "dune", url: "product-dune-bath-towel.html",
-      sizes: [
-        { label: "Hand towel 50 × 90 cm", price: 14 },
-        { label: "Bath towel 70 × 140 cm", price: 24 },
-        { label: "Bath sheet 90 × 160 cm", price: 32 }
-      ]
-    },
-    "dune-towel-set": {
-      name: "Dune™ 3-Piece Towel Set", colour: "Apricot", ph: "dune", url: "product-dune-towel-set.html",
-      sizes: [{ label: "3-piece set", price: 42 }]
-    }
-  };
-  var SHIPPING = 3.99, FREE_OVER = 50;
-  var KEY = "aqt-cart";
+  var A = window.AQT, money = A.money;
+  var CART = "aqt-cart";
 
-  function money(n) { return "£" + n.toFixed(2); }
-  function store(k, v) {
-    try {
-      if (v === undefined) return JSON.parse(localStorage.getItem(k) || "null");
-      localStorage.setItem(k, JSON.stringify(v));
-    } catch (e) { return null; }
-  }
-  function getCart() { return store(KEY) || []; }
-  function setCart(c) { store(KEY, c); updateCount(); }
+  function getCart() { return A.get(CART, []); }
+  function setCart(c) { A.set(CART, c); updateCount(); }
   function cartTotals(cart) {
     var sub = cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0);
-    var ship = sub === 0 || sub >= FREE_OVER ? 0 : SHIPPING;
+    var ship = sub === 0 || sub >= A.FREE_OVER ? 0 : A.SHIPPING;
     return { sub: sub, ship: ship, total: sub + ship };
   }
   function updateCount() {
@@ -51,6 +17,7 @@
     document.querySelectorAll("[data-cart-count]").forEach(function (el) { el.textContent = n ? "(" + n + ")" : ""; });
   }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function thumb(id, alt) { return '<div class="pic ratio-45"><img src="' + A.imgUrl(id, 240) + '" alt="' + esc(alt || "") + '" loading="lazy"></div>'; }
 
   // Header
   var header = document.querySelector(".site-header");
@@ -74,24 +41,40 @@
     document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("in"); });
   }
 
-  // Email sign-up (mock)
+  // Email sign-up — stored so it shows in the admin
   document.querySelectorAll(".signup-form").forEach(function (f) {
     f.addEventListener("submit", function (e) {
       e.preventDefault();
       var msg = f.parentNode.querySelector(".form-msg");
+      var email = (f.email.value || "").trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (msg) msg.textContent = "Please enter a valid email address."; return; }
+      var subs = A.get("aqt-subscribers", []);
+      if (!subs.some(function (s) { return s.email.toLowerCase() === email.toLowerCase(); })) {
+        subs.unshift({ email: email, date: new Date().toISOString(), source: f.getAttribute("data-source") || "Website" });
+        A.set("aqt-subscribers", subs);
+      }
       if (msg) msg.textContent = "Thank you. We’ll be in touch, quietly.";
       f.reset();
     });
   });
 
-  // Shop filter
+  // Shop — apply admin edits, then filter
+  document.querySelectorAll(".product-card[data-slug]").forEach(function (card) {
+    var p = A.bySlug(card.getAttribute("data-slug"));
+    if (!p) return;
+    card.querySelector("h3").textContent = p.name;
+    card.querySelector(".price").textContent = p.soldOut ? fromSold(p) : A.fromPrice(p);
+    if (p.hidden) card.setAttribute("data-hidden", "");
+    card.hidden = p.hidden;
+  });
+  function fromSold(p) { return A.fromPrice(p) + " · Sold out"; }
   var filters = document.querySelectorAll(".filters button");
   filters.forEach(function (b) {
     b.addEventListener("click", function () {
       var f = b.getAttribute("data-filter");
       filters.forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
       document.querySelectorAll(".product-card").forEach(function (c) {
-        c.hidden = f !== "all" && c.getAttribute("data-collection") !== f;
+        c.hidden = c.hasAttribute("data-hidden") || (f !== "all" && c.getAttribute("data-collection") !== f);
       });
     });
   });
@@ -99,11 +82,17 @@
   // Product page
   var pp = document.querySelector("[data-product]");
   if (pp) {
-    var id = pp.getAttribute("data-product"), product = PRODUCTS[id], sizeIdx = product.sizes.length > 1 ? 1 : 0;
+    var id = pp.getAttribute("data-product"), product = A.bySlug(id), sizeIdx = product.sizes.length > 1 ? 1 : 0;
     var priceEl = document.querySelector("[data-price]"), sizeName = document.querySelector("[data-size-name]");
+    var addBtn = document.querySelector("[data-add]");
+    document.querySelector(".product-info h1").textContent = product.name;
+    if (product.hidden) {
+      document.querySelector(".product-info .product-desc").insertAdjacentHTML("afterend", '<p class="sum-note">This piece is not currently available.</p>');
+    }
+    if (product.soldOut || product.hidden) { addBtn.disabled = true; addBtn.textContent = product.hidden ? "Unavailable" : "Sold out"; }
     function showPrice() {
-      priceEl.textContent = money(product.sizes[sizeIdx].price);
-      if (sizeName) sizeName.textContent = product.sizes[sizeIdx].label;
+      priceEl.textContent = money(product.prices[sizeIdx]);
+      if (sizeName) sizeName.textContent = product.sizes[sizeIdx];
     }
     document.querySelectorAll(".size-btn").forEach(function (b, i) {
       b.addEventListener("click", function () {
@@ -117,30 +106,32 @@
     var qtyInput = document.querySelector(".qty input");
     document.querySelectorAll("[data-qty]").forEach(function (b) {
       b.addEventListener("click", function () {
-        var v = Math.max(1, Math.min(10, (parseInt(qtyInput.value, 10) || 1) + parseInt(b.getAttribute("data-qty"), 10)));
-        qtyInput.value = v;
+        qtyInput.value = Math.max(1, Math.min(10, (parseInt(qtyInput.value, 10) || 1) + parseInt(b.getAttribute("data-qty"), 10)));
       });
     });
 
-    document.querySelector("[data-add]").addEventListener("click", function () {
+    addBtn.addEventListener("click", function () {
+      if (addBtn.disabled) return;
       var qty = Math.max(1, Math.min(10, parseInt(qtyInput.value, 10) || 1));
-      var size = product.sizes[sizeIdx];
+      var size = product.sizes[sizeIdx], price = product.prices[sizeIdx];
       var cart = getCart();
-      var line = cart.filter(function (l) { return l.id === id && l.size === size.label; })[0];
-      if (line) line.qty = Math.min(10, line.qty + qty);
-      else cart.push({ id: id, name: product.name, colour: product.colour, size: size.label, price: size.price, qty: qty, ph: product.ph, url: product.url });
+      var line = cart.filter(function (l) { return l.id === id && l.size === size; })[0];
+      if (line) { line.qty = Math.min(10, line.qty + qty); line.price = price; }
+      else cart.push({ id: id, name: product.name, colour: product.colour, size: size, price: price, qty: qty, img: product.img, url: product.url });
       setCart(cart);
       document.querySelector(".added-msg").innerHTML = "Added to your bag. <a class=\"text-link\" href=\"cart.html\">View bag</a>";
     });
 
     // Gallery
-    var main = document.querySelector(".gallery-main .ph");
+    var mainImg = document.querySelector(".gallery-main img");
     document.querySelectorAll(".gallery-thumbs button").forEach(function (b) {
       b.addEventListener("click", function () {
         document.querySelectorAll(".gallery-thumbs button").forEach(function (x) { x.setAttribute("aria-current", x === b); });
-        var src = b.querySelector(".ph");
-        main.className = src.className.replace("ratio-11", "ratio-45");
-        main.querySelector(".ph-note").innerHTML = src.querySelector(".ph-note").innerHTML;
+        var src = b.getAttribute("data-photo");
+        mainImg.src = A.imgUrl(src, 1200);
+        mainImg.srcset = A.imgUrl(src, 700) + " 700w, " + A.imgUrl(src, 1200) + " 1200w, " + A.imgUrl(src, 1800) + " 1800w";
+        mainImg.alt = b.querySelector("img").alt;
+        mainImg.setAttribute("data-photo", src);
       });
     });
   }
@@ -151,10 +142,10 @@
   var gm = document.querySelector(".gallery-main");
   if (gm && lb) {
     function openLb() {
-      var src = gm.querySelector(".ph");
-      var target = lb.querySelector(".ph");
-      target.className = src.className.replace("ratio-45", "");
-      target.querySelector(".ph-note").innerHTML = src.querySelector(".ph-note").innerHTML;
+      var src = gm.querySelector("img");
+      var big = lb.querySelector("img");
+      big.src = A.imgUrl(src.getAttribute("data-photo"), 2000);
+      big.alt = src.alt;
       lb.classList.add("open");
       lb.querySelector(".lightbox-close").focus();
     }
@@ -162,8 +153,6 @@
     gm.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openLb(); } });
     lb.addEventListener("click", function (e) { if (e.target === lb || e.target.classList.contains("lightbox-close")) closeLightbox(); });
   }
-
-  function phHTML(kind) { return '<div class="ph ph--' + kind + '"><span class="ph-note">Product photo</span></div>'; }
 
   // Cart page
   var cartRoot = document.querySelector("[data-cart]");
@@ -174,10 +163,10 @@
       return;
     }
     var t = cartTotals(cart);
-    var left = Math.max(0, FREE_OVER - t.sub);
+    var left = Math.max(0, A.FREE_OVER - t.sub);
     var items = cart.map(function (l, i) {
       return '<div class="cart-item">' +
-        '<a href="' + esc(l.url) + '" aria-hidden="true" tabindex="-1">' + phHTML(l.ph) + '</a>' +
+        '<a href="' + esc(l.url) + '" aria-hidden="true" tabindex="-1">' + thumb(l.img, "") + '</a>' +
         '<div><h3><a href="' + esc(l.url) + '">' + esc(l.name) + '</a></h3>' +
         '<p class="meta">' + esc(l.colour) + ' · ' + esc(l.size) + ' · ' + money(l.price) + '</p>' +
         '<div class="qty" role="group" aria-label="Quantity for ' + esc(l.name) + '"><button type="button" data-line="' + i + '" data-d="-1" aria-label="Decrease">−</button>' +
@@ -189,7 +178,7 @@
       '<div class="cart-layout"><div class="cart-items">' + items + '</div>' +
       '<aside class="summary" aria-label="Order summary"><h2>Summary</h2>' +
       '<div class="free-bar">' + (left > 0 ? "You are " + money(left) + " away from free UK delivery." : "Your order qualifies for free UK delivery.") +
-      '<div class="track"><div class="fill" style="width:' + Math.min(100, t.sub / FREE_OVER * 100) + '%"></div></div></div>' +
+      '<div class="track"><div class="fill" style="width:' + Math.min(100, t.sub / A.FREE_OVER * 100) + '%"></div></div></div>' +
       '<div class="sum-row"><span>Subtotal</span><span>' + money(t.sub) + '</span></div>' +
       '<div class="sum-row"><span>Delivery <small>(Royal Mail Tracked 48)</small></span><span>' + (t.ship ? money(t.ship) : "Free") + '</span></div>' +
       '<div class="sum-row total"><span>Total</span><span>' + money(t.total) + '</span></div>' +
@@ -228,13 +217,19 @@
     var form = document.querySelector(".checkout-form");
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      if (!getCart().length) { window.location.href = "shop.html"; return; }
+      var items = getCart();
+      if (!items.length) { window.location.href = "shop.html"; return; }
       var order = {
         no: "AQT-" + String(Math.floor(10000 + Math.random() * 89999)),
-        email: form.email.value, name: form.fname.value,
+        date: new Date().toISOString(), status: "Processing",
+        email: form.email.value, name: (form.fname.value + " " + form.lname.value).trim(), fname: form.fname.value,
         address: [form.address1.value, form.city.value, form.postcode.value].filter(Boolean).join(", "),
-        items: getCart(), totals: cartTotals(getCart())
+        items: items.map(function (l) { return { id: l.id, name: l.name, size: l.size, price: l.price, qty: l.qty }; }),
+        totals: cartTotals(items)
       };
+      var orders = A.get("aqt-orders", []);
+      orders.unshift(order);
+      A.set("aqt-orders", orders);
       try { sessionStorage.setItem("aqt-order", JSON.stringify(order)); } catch (err) {}
       setCart([]);
       window.location.href = "order-confirmation.html";
@@ -252,7 +247,7 @@
     if (o) {
       conf.innerHTML =
         '<p class="eyebrow">Order ' + esc(o.no) + '</p>' +
-        '<h1>Thank you, ' + esc(o.name || "") + '.</h1>' +
+        '<h1>Thank you, ' + esc(o.fname || o.name || "") + '.</h1>' +
         '<p class="lede">Your order is confirmed. A receipt is on its way to ' + esc(o.email) + '.</p>' +
         '<div class="summary" style="text-align:left;margin:48px 0">' +
         o.items.map(function (l) { return '<div class="mini-item"><span>' + esc(l.name) + (l.qty > 1 ? " × " + l.qty : "") + '</span><span>' + money(l.price * l.qty) + '</span></div>'; }).join("") +

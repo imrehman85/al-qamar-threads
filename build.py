@@ -11,10 +11,31 @@ ICON_USER = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5
 ICON_BAG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 13H6L5 8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>'
 
 
-def ph(kind, ratio, title, note, extra=""):
-    """A clean photo slot that names the shot still needed."""
-    return (f'<div class="ph ph--{kind} {ratio} {extra}" role="img" aria-label="{title}">'
-            f'<span class="ph-note"><b>Photo needed</b>{note}</span></div>')
+# Sample photography (Unsplash licence) until Al Qamar's own product photos are ready.
+PHOTOS = {
+    "hero": "1781344334947-60c704bafd51",        # calm bathroom, freestanding tub
+    "moon_stack": "1760722974657-f64bce2f9cc5",  # stack of white towels
+    "dune_stack": "1664227431098-1289c13695c1",  # warm folded towels
+    "cloud_bed": "1777506549593-c3c5ff0e581e",   # white bed in morning light
+    "texture": "1684248655527-46bee8e79029",     # rolled towels, close texture
+    "rail": "1583294619228-f44cd1590d39",        # towels on a bathroom shelf
+    "marble": "1765745518673-b562b7304a53",      # marble bathroom
+    "draped": "1766727923658-ae4d4d837239",      # cream towel draped over a basket
+    "weave": "1619263719761-165c773ee5df",       # white towel close-up
+    "tub": "1616663717839-2fea42e1a1f6",         # towel on a bathtub
+}
+
+
+def img_url(pid, w):
+    return f"https://images.unsplash.com/photo-{pid}?auto=format&fit=crop&w={w}&q=72"
+
+
+def pic(pid, ratio, alt, sizes="100vw", eager=False, extra=""):
+    """A responsive photo in a fixed-ratio frame."""
+    srcset = ", ".join(f"{img_url(pid, w)} {w}w" for w in (480, 800, 1200, 1800, 2400))
+    load = 'fetchpriority="high"' if eager else 'loading="lazy"'
+    return (f'<div class="pic {ratio} {extra}"><img src="{img_url(pid, 1200)}" srcset="{srcset}" sizes="{sizes}" '
+            f'alt="{alt}" {load} decoding="async" data-photo="{pid}"></div>')
 
 
 def header(active):
@@ -36,7 +57,8 @@ def header(active):
 
 
 def signup(id_):
-    return f'''<form class="signup-form" novalidate>
+    source = "Footer" if id_.startswith("footer") else "Home page"
+    return f'''<form class="signup-form" novalidate data-source="{source}">
       <label class="sr-only" for="{id_}">Email address</label>
       <input id="{id_}" type="email" name="email" placeholder="Your email address" autocomplete="email" required>
       <button type="submit">Sign up</button>
@@ -68,7 +90,7 @@ FOOTER = f'''<footer class="site-footer">
     </div>
     <div class="footer-legal">
       <p>&copy; 2026 Al Qamar Threads Ltd. Registered in England &amp; Wales, company no. 00000000.<br>Registered office: [Registered address, City, Postcode], United Kingdom.</p>
-      <p>Design mock-up &middot; photos, prices and details are placeholders.</p>
+      <p>Design mock-up &middot; sample photography from <a href="https://unsplash.com" rel="noopener">Unsplash</a>, to be replaced with our own &middot; <a href="admin.html">Admin</a></p>
     </div>
   </div>
 </footer>'''
@@ -96,6 +118,7 @@ def page(filename, title, desc, body, active=""):
 {body}
 </main>
 {FOOTER}
+<script src="assets/js/catalog.js" defer></script>
 <script src="assets/js/main.js" defer></script>
 </body>
 </html>
@@ -108,26 +131,31 @@ def page(filename, title, desc, body, active=""):
 PRODUCTS = [
     dict(slug="moon-bath-towel", col="moon", name=f"Moon{TM} Bath Towel", price="From £14", colour="White", hex="#FBFAF7",
          desc="Dense, soft cotton in clean hotel white. Heavy in the hand, quick to dry.",
-         sizes=["Hand towel 50 × 90 cm", "Bath towel 70 × 140 cm", "Bath sheet 90 × 160 cm"], set=None),
+         sizes=["Hand towel 50 × 90 cm", "Bath towel 70 × 140 cm", "Bath sheet 90 × 160 cm"], set=None,
+         photos=["1527986654082-0b5b3fef2632", "1619263719761-165c773ee5df", "1620000190821-abd8f262b86f", "1760722974657-f64bce2f9cc5"]),
     dict(slug="moon-towel-set", col="moon", name=f"Moon{TM} 3-Piece Towel Set", price="£42", colour="White", hex="#FBFAF7",
          desc="Everything a guest bathroom needs, in hotel white. Folded and ready to give.",
-         sizes=["3-piece set"], set=["1 face cloth, 30 × 30 cm", "1 hand towel, 50 × 90 cm", "1 bath towel, 70 × 140 cm"]),
+         sizes=["3-piece set"], set=["1 face cloth, 30 × 30 cm", "1 hand towel, 50 × 90 cm", "1 bath towel, 70 × 140 cm"],
+         photos=["1760722974657-f64bce2f9cc5", "1787168295699-03aed18d17d4", "1616663717839-2fea42e1a1f6", "1684248655527-46bee8e79029"]),
     dict(slug="dune-bath-towel", col="dune", name=f"Dune{TM} Bath Towel", price="From £14", colour="Apricot", hex="#EFC6A4",
          desc="The same deep pile in a warm apricot. Soft colour for calm rooms.",
-         sizes=["Hand towel 50 × 90 cm", "Bath towel 70 × 140 cm", "Bath sheet 90 × 160 cm"], set=None),
+         sizes=["Hand towel 50 × 90 cm", "Bath towel 70 × 140 cm", "Bath sheet 90 × 160 cm"], set=None,
+         photos=["1664227431098-1289c13695c1", "1625479969471-c0a79753d2d3", "1583294506577-7f1217aca9fb", "1766727923658-ae4d4d837239"]),
     dict(slug="dune-towel-set", col="dune", name=f"Dune{TM} 3-Piece Towel Set", price="£42", colour="Apricot", hex="#EFC6A4",
          desc="Three warm apricot pieces, chosen to sit together. A considered gift.",
-         sizes=["3-piece set"], set=["1 face cloth, 30 × 30 cm", "1 hand towel, 50 × 90 cm", "1 bath towel, 70 × 140 cm"]),
+         sizes=["3-piece set"], set=["1 face cloth, 30 × 30 cm", "1 hand towel, 50 × 90 cm", "1 bath towel, 70 × 140 cm"],
+         photos=["1625479969471-c0a79753d2d3", "1664227431098-1289c13695c1", "1583294506577-7f1217aca9fb", "1603400522537-35e25a14bc1e"]),
 ]
+CARD_SIZES = "(max-width: 560px) 50vw, (max-width: 1320px) 45vw, 600px"
 COLL = {"moon": f"Moon{TM}", "dune": f"Dune{TM}"}
 
 
 def product_card(p):
     c = p["col"]
-    return f'''<a class="product-card reveal" href="product-{p["slug"]}.html" data-collection="{c}">
+    return f'''<a class="product-card reveal" href="product-{p["slug"]}.html" data-collection="{c}" data-slug="{p["slug"]}">
         <div style="position:relative">
-          {ph(c, "ratio-45", p["name"], f"{p['name']} folded, front-on, soft daylight")}
-          <div class="ph-alt">{ph("room", "ratio-45", p["name"] + " in a bathroom", "Same product styled in a real bathroom", "")}</div>
+          {pic(p["photos"][0], "ratio-45", p["name"], CARD_SIZES)}
+          <div class="ph-alt">{pic(p["photos"][2], "ratio-45", "", CARD_SIZES)}</div>
         </div>
         <h3>{p["name"]}</h3><p class="price">{p["price"]}</p>
       </a>'''
@@ -135,7 +163,7 @@ def product_card(p):
 
 # ---------- Home ----------
 home = f'''<section class="hero">
-  {ph("moon", "ratio-hero", "Moon towels stacked in soft morning light", "Hero, landscape 2400 × 1350 px: close-up of folded Moon towels, soft window light")}
+  {pic(PHOTOS["hero"], "ratio-hero", "A calm, light-filled bathroom with a freestanding bath", eager=True)}
   <div class="hero-content">
     <h1>Hotel luxury, made for home.</h1>
     <a class="btn btn--light" href="shop.html">Shop the collection</a>
@@ -150,15 +178,15 @@ home = f'''<section class="hero">
     </div>
     <div class="collections">
       <a class="collection-card reveal" href="shop.html#moon">
-        {ph("moon", "ratio-34", "Moon collection", "Moon, portrait 1200 × 1600 px: pile texture, macro")}
+        {pic(PHOTOS["moon_stack"], "ratio-34", "A stack of soft white Moon towels", "(max-width: 800px) 100vw, 33vw")}
         <h3>Moon{TM}</h3><p>Hotel white, deep and soft.</p><span class="link-underline">Discover</span>
       </a>
       <a class="collection-card reveal" href="shop.html#dune">
-        {ph("dune", "ratio-34", "Dune collection", "Dune, portrait 1200 × 1600 px: apricot towels, stitched hem close-up")}
+        {pic(PHOTOS["dune_stack"], "ratio-34", "Warm-toned Dune towels, folded", "(max-width: 800px) 100vw, 33vw")}
         <h3>Dune{TM}</h3><p>A warm apricot, softly sunlit.</p><span class="link-underline">Discover</span>
       </a>
       <div class="collection-card reveal">
-        {ph("cloud", "ratio-34", "Cloud collection, coming soon", "Cloud duvet set, portrait 1200 × 1600 px: to be photographed")}
+        {pic(PHOTOS["cloud_bed"], "ratio-34", "A white bed in soft morning light", "(max-width: 800px) 100vw, 33vw")}
         <h3>Cloud{TM}</h3><p>Bedding, for slow mornings.</p><span class="soon">Coming soon</span>
       </div>
     </div>
@@ -167,7 +195,7 @@ home = f'''<section class="hero">
 
 <section class="section" style="padding-top:0">
   <div class="wrap split">
-    {ph("stone", "ratio-45", "Stitching detail on a Moon towel", "Detail, portrait 1200 × 1500 px: dobby border and stitching, very close")}
+    {pic(PHOTOS["texture"], "ratio-45", "Close-up of rolled cotton towels", "(max-width: 800px) 100vw, 50vw")}
     <div class="reveal">
       <span class="eyebrow">Our story</span>
       <h2>Made the way the best hotels do it.</h2>
@@ -186,7 +214,7 @@ home = f'''<section class="hero">
 </section>
 
 <section class="section">
-  <div class="wrap">{ph("room", "ratio-169", "Dune towels in a calm bathroom", "Lifestyle, landscape 2400 × 1350 px: Dune towels on a rail in a neutral bathroom")}</div>
+  <div class="wrap">{pic(PHOTOS["rail"], "ratio-169", "Folded towels on a bathroom shelf")}</div>
 </section>
 
 <section class="section" style="padding-top:0">
@@ -226,15 +254,12 @@ page("shop.html", "Shop", "Shop Moon and Dune bath towels and 3-piece towel sets
 # ---------- Product pages ----------
 def product_page(p):
     c = p["col"]
-    shots = [
-        (c, f"{p['name']}, folded", "Main, portrait 1600 × 2000 px: folded, front-on"),
-        ("stone", "Pile texture close-up", "Macro of the pile, raking light"),
-        ("room", "In a bathroom", "Styled in a real bathroom"),
-        (c, "Stitching detail", "Hem and border stitching, close"),
-    ]
+    alts = [f"{p['name']}, folded", "Close-up of the pile", "In a bathroom", "Detail"]
+    shots = list(zip(p["photos"], alts))
     thumbs = "".join(
-        f'<button type="button" aria-label="Show image {i + 1}: {t}" aria-current="{"true" if i == 0 else "false"}">{ph(k, "ratio-11", t, n)}</button>'
-        for i, (k, t, n) in enumerate(shots))
+        f'<button type="button" data-photo="{pid}" aria-label="Show image {i + 1}: {t}" aria-current="{"true" if i == 0 else "false"}">'
+        f'<div class="pic ratio-11"><img src="{img_url(pid, 300)}" alt="{t}" loading="lazy"></div></button>'
+        for i, (pid, t) in enumerate(shots))
     multi = len(p["sizes"]) > 1
     sizes = "".join(
         f'<button type="button" class="size-btn" role="radio" aria-checked="{"true" if (i == 1 if multi else i == 0) else "false"}">{s}</button>'
@@ -250,7 +275,7 @@ def product_page(p):
     <div class="gallery">
       <div class="gallery-main" tabindex="0" role="button" aria-label="Zoom image">
         <span class="zoom-hint">Click to zoom</span>
-        {ph(shots[0][0], "ratio-45", shots[0][1], shots[0][2])}
+        {pic(shots[0][0], "ratio-45", shots[0][1], "(max-width: 900px) 100vw, 58vw", eager=True)}
       </div>
       <div class="gallery-thumbs">{thumbs}</div>
     </div>
@@ -302,8 +327,8 @@ def product_page(p):
 
 <section class="section">
   <div class="wrap detail-band">
-    {ph("stone", "ratio-11", "Weave close-up", "Square 1600 × 1600 px: weave, very close")}
-    {ph("room", "ratio-11", "Towels on a rail", "Square 1600 × 1600 px: on a rail, neutral room")}
+    {pic(PHOTOS["weave"], "ratio-11", "Close-up of the towel weave", "(max-width: 700px) 100vw, 50vw")}
+    {pic(PHOTOS["tub"], "ratio-11", "A towel resting on the edge of a bath", "(max-width: 700px) 100vw, 50vw")}
   </div>
   <div class="narrow center reveal" style="margin-top:clamp(64px,8vw,120px)">
     <h2>Soft from the first wash.</h2>
@@ -313,7 +338,7 @@ def product_page(p):
 
 <div class="lightbox" role="dialog" aria-modal="true" aria-label="Image zoom">
   <button class="lightbox-close" aria-label="Close zoom">&times;</button>
-  <div class="ph"><span class="ph-note"></span></div>
+  <img alt="">
 </div>'''
     page(f"product-{p['slug']}.html", p["name"].replace(TM, ""), p["desc"], body, "shop.html")
 
@@ -323,7 +348,7 @@ for p in PRODUCTS:
 
 # ---------- Our Story ----------
 story = f'''<section class="page-intro"><div class="narrow"><span class="eyebrow">Our story</span><h1>The feeling of a good hotel, kept.</h1></div></section>
-<div class="wrap">{ph("room", "ratio-169", "Folded towels on a bathroom shelf", "Landscape 2400 × 1350 px: towels on a shelf, morning light")}</div>
+<div class="wrap">{pic(PHOTOS["marble"], "ratio-169", "A quiet marble bathroom", eager=True)}</div>
 <section class="section">
   <div class="narrow prose reveal">
     <p class="lede" style="max-width:none">We started Al Qamar Threads with one simple thought: the towels in the best hotels shouldn&rsquo;t stay in the hotel.</p>
@@ -333,7 +358,7 @@ story = f'''<section class="page-intro"><div class="narrow"><span class="eyebrow
 </section>
 <section class="section" style="padding-top:0">
   <div class="wrap split split--reverse">
-    {ph("stone", "ratio-45", "Hands folding a towel", "Portrait 1200 × 1500 px: hands folding a Moon towel")}
+    {pic(PHOTOS["draped"], "ratio-45", "A soft cream towel draped over a basket", "(max-width: 800px) 100vw, 50vw")}
     <div class="reveal"><h2>Fewer things, made well.</h2><p class="lede">One weight. Honest materials. Colours that stay calm.</p></div>
   </div>
 </section>'''
