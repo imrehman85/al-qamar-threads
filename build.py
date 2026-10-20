@@ -1,7 +1,7 @@
-"""Builds the static Al Qamar Threads mock-up. Run: python build.py"""
+"""Builds the Al Qamar Threads pages into AlQamar/wwwroot. Run: python build.py"""
 from pathlib import Path
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).parent / "AlQamar" / "wwwroot"
 SITE = "Al Qamar Threads"
 TM = "™"
 
@@ -90,7 +90,7 @@ FOOTER = f'''<footer class="site-footer">
     </div>
     <div class="footer-legal">
       <p>&copy; 2026 Al Qamar Threads Ltd. Registered in England &amp; Wales, company no. 00000000.<br>Registered office: [Registered address, City, Postcode], United Kingdom.</p>
-      <p>Design mock-up &middot; sample photography from <a href="https://unsplash.com" rel="noopener">Unsplash</a>, to be replaced with our own &middot; <a href="admin.html">Admin</a></p>
+      <p>Sample photography from <a href="https://unsplash.com" rel="noopener">Unsplash</a>, to be replaced with our own &middot; <a href="admin.html">Admin</a></p>
     </div>
   </div>
 </footer>'''
@@ -404,12 +404,6 @@ page("cart.html", "Your Bag", "Your shopping bag.", '''<section class="page-intr
 checkout = '''<section class="page-intro" style="padding-bottom:40px"><div class="narrow"><h1>Checkout</h1><p class="lede">No account needed.</p></div></section>
 <section class="section" style="padding-top:0"><div class="wrap cart-layout">
   <form class="checkout-form">
-    <div class="express" aria-label="Express checkout">
-      <button type="button" class="pay-btn" aria-label="Pay with Apple Pay">Apple Pay</button>
-      <button type="button" class="pay-btn" aria-label="Pay with Google Pay">Google Pay</button>
-    </div>
-    <p class="sum-note" style="margin:0">Shown where your device supports them.</p>
-    <div class="divider">or</div>
     <fieldset><legend>Contact</legend>
       <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required></div>
       <label class="check"><input type="checkbox"> Email me about new colours (optional)</label>
@@ -428,11 +422,11 @@ checkout = '''<section class="page-intro" style="padding-bottom:40px"><div class
       <div class="radio-card"><span>Royal Mail Tracked 48</span><span>&pound;3.99 &middot; free over &pound;50</span></div>
     </fieldset>
     <fieldset><legend>Payment</legend>
-      <div class="card-mock">Card details field (WooPayments / Stripe) appears here. Test mode until launch.</div>
+      <div class="card-mock">Bank transfer. After you order we email our bank details. We dispatch as soon as your payment arrives.</div>
     </fieldset>
     <label class="check"><input type="checkbox" required> I have read the <a href="terms.html">Terms</a>, <a href="privacy.html">Privacy Policy</a> and <a href="shipping-returns.html">Shipping &amp; Returns</a>, including my 14-day right to cancel.</label>
-    <label class="check"><input type="checkbox"> Create an account for faster checkout next time (optional)</label>
     <button type="submit" class="btn btn--block" style="margin-top:20px">Place order</button>
+    <p class="form-msg" data-checkout-error role="alert"></p>
   </form>
   <aside class="summary" aria-label="Order summary">
     <h2>Your order</h2>

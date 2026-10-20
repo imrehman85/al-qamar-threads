@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "site",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8765"],
-      "port": 8765
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "AlQamar", "--urls", "http://localhost:5080"],
+      "port": 5080
     }
   ]
 }

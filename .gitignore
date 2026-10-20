@@ -1,3 +1,6 @@
 __pycache__/
 .secrets/
-.vercel/
+bin/
+obj/
+publish/
+*.zip

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contact | Al Qamar Threads</title>
-<meta name="description" content="Email Al Qamar Threads at hello@alqamarthreads.com.">
+<title>Checkout | Al Qamar Threads</title>
+<meta name="description" content="Secure guest checkout.">
 <meta name="theme-color" content="#F8F6F2">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,7 +18,7 @@
   <div class="header-inner">
     <button class="menu-toggle" aria-label="Menu" aria-expanded="false" aria-controls="main-nav"><span></span><span></span></button>
     <a class="logo" href="index.html" aria-label="Al Qamar Threads home"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M20.5 4.5a12 12 0 1 0 7 21.2A13 13 0 0 1 20.5 4.5z" fill="none" stroke="currentColor" stroke-width="1.1"/></svg><span class="logo-text">AL QAMAR THREADS</span></a>
-    <nav class="main-nav" id="main-nav" aria-label="Main"><ul><li><a href="shop.html">Shop</a></li><li><a href="our-story.html">Our Story</a></li><li><a href="contact.html" aria-current="page">Contact</a></li></ul></nav>
+    <nav class="main-nav" id="main-nav" aria-label="Main"><ul><li><a href="shop.html">Shop</a></li><li><a href="our-story.html">Our Story</a></li><li><a href="contact.html">Contact</a></li></ul></nav>
     <div class="header-tools">
       <a href="account.html" aria-label="My account"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4 21c1.2-4.2 4.3-6.3 8-6.3s6.8 2.1 8 6.3"/></svg><span class="tool-label">Account</span></a>
       <a href="cart.html" aria-label="Bag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 13H6L5 8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg><span class="tool-label">Bag</span><span class="cart-count" data-cart-count></span></a>
@@ -26,11 +26,38 @@
   </div>
 </header>
 <main id="main">
-<section class="page-intro" style="padding-bottom:var(--section)"><div class="narrow">
-  <span class="eyebrow">Contact</span>
-  <h1>We&rsquo;d love to hear from you.</h1>
-  <p class="lede">Questions about an order, a gift or a fabric. We reply within one working day.</p>
-  <p style="margin-top:48px"><a class="btn btn--ghost" href="mailto:hello@alqamarthreads.com">hello@alqamarthreads.com</a></p>
+<section class="page-intro" style="padding-bottom:40px"><div class="narrow"><h1>Checkout</h1><p class="lede">No account needed.</p></div></section>
+<section class="section" style="padding-top:0"><div class="wrap cart-layout">
+  <form class="checkout-form">
+    <fieldset><legend>Contact</legend>
+      <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required></div>
+      <label class="check"><input type="checkbox"> Email me about new colours (optional)</label>
+    </fieldset>
+    <fieldset><legend>Delivery</legend>
+      <div class="field-row">
+        <div class="field"><label for="fname">First name</label><input id="fname" name="fname" autocomplete="given-name" required></div>
+        <div class="field"><label for="lname">Last name</label><input id="lname" name="lname" autocomplete="family-name" required></div>
+      </div>
+      <div class="field"><label for="address1">Address</label><input id="address1" name="address1" autocomplete="address-line1" required></div>
+      <div class="field-row">
+        <div class="field"><label for="city">Town or city</label><input id="city" name="city" autocomplete="address-level2" required></div>
+        <div class="field"><label for="postcode">Postcode</label><input id="postcode" name="postcode" autocomplete="postal-code" required></div>
+      </div>
+      <div class="field"><label for="country">Country</label><select id="country" disabled><option>United Kingdom</option></select></div>
+      <div class="radio-card"><span>Royal Mail Tracked 48</span><span>&pound;3.99 &middot; free over &pound;50</span></div>
+    </fieldset>
+    <fieldset><legend>Payment</legend>
+      <div class="card-mock">Bank transfer. After you order we email our bank details. We dispatch as soon as your payment arrives.</div>
+    </fieldset>
+    <label class="check"><input type="checkbox" required> I have read the <a href="terms.html">Terms</a>, <a href="privacy.html">Privacy Policy</a> and <a href="shipping-returns.html">Shipping &amp; Returns</a>, including my 14-day right to cancel.</label>
+    <button type="submit" class="btn btn--block" style="margin-top:20px">Place order</button>
+    <p class="form-msg" data-checkout-error role="alert"></p>
+  </form>
+  <aside class="summary" aria-label="Order summary">
+    <h2>Your order</h2>
+    <div data-checkout-summary></div>
+    <p class="sum-note">Prices include no VAT. We are not VAT-registered.</p>
+  </aside>
 </div></section>
 </main>
 <footer class="site-footer">
@@ -62,7 +89,7 @@
     </div>
     <div class="footer-legal">
       <p>&copy; 2026 Al Qamar Threads Ltd. Registered in England &amp; Wales, company no. 00000000.<br>Registered office: [Registered address, City, Postcode], United Kingdom.</p>
-      <p>Design mock-up &middot; sample photography from <a href="https://unsplash.com" rel="noopener">Unsplash</a>, to be replaced with our own &middot; <a href="admin.html">Admin</a></p>
+      <p>Sample photography from <a href="https://unsplash.com" rel="noopener">Unsplash</a>, to be replaced with our own &middot; <a href="admin.html">Admin</a></p>
     </div>
   </div>
 </footer>

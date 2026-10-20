@@ -1,22 +1,33 @@
-# Al Qamar Threads — website design mock-up
+# Al Qamar Threads — online shop
 
-A clickable static mock-up of the Al Qamar Threads shop (Home, Shop, product pages, Bag, Checkout, Order confirmation, Our Story, Contact, Shipping & Returns, Terms, Privacy, My Account), styled after the quiet-luxury feel of the brief.
+A quiet-luxury towel shop with an admin dashboard, built as an **ASP.NET Core 8** app with an **MS SQL** database. Made to run on free [somee.com](https://somee.com) hosting.
 
-It is for approval before the WordPress / WooCommerce build. Photos are free-licence samples from Unsplash, to be swapped for Al Qamar's own product shots. Prices, company number and address are placeholders.
+- **Shop:** Home, Shop, product pages, Bag, Checkout (bank transfer), Order confirmation, Our Story, Contact, Shipping & Returns, Terms, Privacy.
+- **Admin** (`/admin.html`): orders and their status, product names, prices, visibility and sold-out flags, email sign-ups, and password change. The first login is `admin` / `admin`; change it under **Settings**.
+- **Database:** tables and the four starting products are created automatically on first run.
+- Photos are free-licence samples from Unsplash, to be swapped for Al Qamar's own product shots.
 
-## Admin demo
+## Project layout
 
-`admin.html` (link in the footer) is a demo dashboard: orders, products (name, prices, visibility, sold out), email sign-ups and store settings, with sample data.
+| Path | What it is |
+|---|---|
+| `AlQamar/Program.cs` | API: products, sign-ups, orders, admin login and admin actions |
+| `AlQamar/Data.cs` | Database tables and first-run setup |
+| `AlQamar/wwwroot/` | The website (HTML, CSS, JS) |
+| `build.py` | Regenerates the HTML pages into `AlQamar/wwwroot` |
 
-- Login: `admin` / `admin` (set in `assets/js/admin-config.js`)
-- This is not real security. The site is static, so the login and all data live in the visitor's own browser. On the live site, the WooCommerce admin does this job.
+## Run locally
 
-## Edit and rebuild
-
-Pages are generated from `build.py` (shared header and footer):
+Needs the .NET 8 SDK and SQL Server LocalDB.
 
 ```bash
-python build.py
+dotnet run --project AlQamar --urls http://localhost:5080
 ```
 
-Styles live in `assets/css/style.css`, cart and gallery behaviour in `assets/js/main.js`.
+## Deploy to somee.com
+
+```bash
+dotnet publish AlQamar -c Release -o publish
+```
+
+Zip the contents of `publish/` and upload it to the site root in the somee File Manager. Then put the somee database connection string in `appsettings.Production.json`. Open `/api/health` to check the database is connected.

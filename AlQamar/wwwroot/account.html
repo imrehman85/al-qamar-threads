@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Your Bag | Al Qamar Threads</title>
-<meta name="description" content="Your shopping bag.">
+<title>My Account | Al Qamar Threads</title>
+<meta name="description" content="Sign in to your Al Qamar Threads account.">
 <meta name="theme-color" content="#F8F6F2">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,8 +26,22 @@
   </div>
 </header>
 <main id="main">
-<section class="page-intro"><div class="narrow"><h1>Your bag</h1></div></section>
-<section class="section" style="padding-top:0"><div class="wrap" data-cart></div></section>
+<section class="page-intro"><div class="narrow"><h1>My account</h1><p class="lede">Track orders and save your details.</p></div></section>
+<section class="section" style="padding-top:0"><div class="wrap account-grid">
+  <form onsubmit="event.preventDefault()">
+    <h2 style="font-size:30px">Sign in</h2>
+    <div class="field"><label for="li-email">Email</label><input id="li-email" type="email" autocomplete="email"></div>
+    <div class="field"><label for="li-pass">Password</label><input id="li-pass" type="password" autocomplete="current-password"></div>
+    <button class="btn" type="submit">Sign in</button>
+    <p style="margin-top:18px"><a class="text-link" href="#">Forgotten your password?</a></p>
+  </form>
+  <form onsubmit="event.preventDefault()">
+    <h2 style="font-size:30px">New here?</h2>
+    <p class="lede">You can always check out as a guest. An account simply keeps your orders in one place.</p>
+    <div class="field"><label for="reg-email">Email</label><input id="reg-email" type="email" autocomplete="email"></div>
+    <button class="btn btn--ghost" type="submit">Create account</button>
+  </form>
+</div></section>
 </main>
 <footer class="site-footer">
   <div class="wrap">
@@ -58,7 +72,7 @@
     </div>
     <div class="footer-legal">
       <p>&copy; 2026 Al Qamar Threads Ltd. Registered in England &amp; Wales, company no. 00000000.<br>Registered office: [Registered address, City, Postcode], United Kingdom.</p>
-      <p>Design mock-up &middot; sample photography from <a href="https://unsplash.com" rel="noopener">Unsplash</a>, to be replaced with our own &middot; <a href="admin.html">Admin</a></p>
+      <p>Sample photography from <a href="https://unsplash.com" rel="noopener">Unsplash</a>, to be replaced with our own &middot; <a href="admin.html">Admin</a></p>
     </div>
   </div>
 </footer>
