@@ -1,5 +1,22 @@
 # Going live — Cloudflare Pages + Supabase + Stripe
 
+## Current status (20 Oct 2026)
+
+Already done:
+- **Site:** https://al-qamar-threads.pages.dev (Cloudflare Pages project `al-qamar-threads`). Deploy with `npm run deploy`.
+- **Supabase:** project `al-qamar-threads` (ref `pfvnswwrfdxvnffspizd`, London). Schema applied from `supabase/migrations/`, public sign-ups off.
+- **Stripe:** Clevera sandbox (test mode). Webhook `we_1USezE0XRz2PLDUFSKiK73Tz` → `/api/stripe-webhook`.
+- **Cloudflare secrets:** `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY` (test), `STRIPE_WEBHOOK_SECRET`.
+- **Tested:** a full test-card order (AQT-10001) was paid, saved by the webhook and shown on the thank-you page.
+
+Still to do:
+1. **Admin user:** Supabase → Authentication → Users → Add user (your email + password, Auto confirm), then make it an admin (step 1.3 below).
+2. **Before launch:** roll the Stripe test key (it was shared in chat), then follow step 7 for live keys.
+
+The steps below are the full guide, for reference or for setting up again.
+
+---
+
 About 30–40 minutes, all on free plans. Do the steps in order.
 
 > **Keep secret keys secret.** Only the Supabase **URL** and **anon public key** go in the code (they are safe to publish).
@@ -34,13 +51,9 @@ About 30–40 minutes, all on free plans. Do the steps in order.
 
 ## 3. Cloudflare Pages (hosting)
 
-1. Sign up at <https://dash.cloudflare.com> → **Workers & Pages → Create → Pages → Connect to Git**.
-2. Pick the GitHub repo **al-qamar-threads**, branch `main`.
-3. Build settings: **Framework preset** None · **Build command** (leave empty) · **Build output directory** `/`.
-4. **Save and Deploy**. You get an address like `https://al-qamar-threads.pages.dev`.
-   Every push to `main` redeploys automatically.
-
-Deploying from this computer instead also works: `npx wrangler pages deploy . --project-name al-qamar-threads`.
+1. `npx wrangler login`, then `npx wrangler pages project create al-qamar-threads --production-branch main`.
+2. `npm run deploy` builds a clean `dist/` folder (public files only) and uploads it with the API functions.
+   You get an address like `https://al-qamar-threads.pages.dev`. Run `npm run deploy` again after every change.
 
 ## 4. Secrets in Cloudflare
 

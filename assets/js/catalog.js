@@ -80,9 +80,10 @@
       }
       return Promise.resolve();
     }
-    return rest("subscribers?on_conflict=email", {
+    // Plain insert: a duplicate email comes back as 409, which counts as already signed up.
+    return rest("subscribers", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates,return=minimal" },
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
       body: JSON.stringify({ email: email, source: source || "Website" })
     }).then(function (r) { if (!r.ok && r.status !== 409) throw new Error("subscribe " + r.status); });
   }

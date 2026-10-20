@@ -13,7 +13,7 @@ The site runs in two modes:
 
 Server code lives in `functions/api/` (Cloudflare Pages Functions) and `lib/shop.js`. The database schema and security rules are in `supabase/schema.sql`.
 
-**To go live, follow [SETUP.md](SETUP.md).**
+**Live at https://al-qamar-threads.pages.dev** (Stripe test mode). Deploy changes with `npm run deploy`. Setup details and what is left: [SETUP.md](SETUP.md).
 
 ## Edit and rebuild
 
