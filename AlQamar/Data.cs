@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace AlQamar;
 
@@ -61,8 +63,12 @@ public class ShopDb(DbContextOptions<ShopDb> options) : DbContext(options)
     public DbSet<Subscriber> Subscribers => Set<Subscriber>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
 
+    // Own schema, so the shop can share a database that already holds other tables.
+    public const string Schema = "aqt";
+
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.HasDefaultSchema(Schema);
         b.Entity<Order>().HasIndex(o => o.No).IsUnique();
         b.Entity<Order>().HasIndex(o => o.CreatedAt);
         b.Entity<Subscriber>().HasIndex(s => s.Email).IsUnique();
@@ -71,10 +77,16 @@ public class ShopDb(DbContextOptions<ShopDb> options) : DbContext(options)
             b.Entity<Order>().Property(p).HasPrecision(10, 2);
     }
 
-    // Creates the tables on first run and adds the starting catalogue and admin login.
+    // Creates the shop's tables on first run (even in a database that already has other tables)
+    // and adds the starting catalogue and admin login.
     public static void Initialise(ShopDb db, IConfiguration config)
     {
-        db.Database.EnsureCreated();
+        var creator = db.GetService<IRelationalDatabaseCreator>();
+        if (!creator.Exists()) creator.Create();
+        var tablesExist = db.Database
+            .SqlQuery<int>($"SELECT COUNT(*) AS [Value] FROM sys.tables t JOIN sys.schemas s ON s.schema_id = t.schema_id WHERE s.name = {Schema} AND t.name = 'Products'")
+            .Single() > 0;
+        if (!tablesExist) creator.CreateTables();
 
         if (!db.Products.Any())
         {
