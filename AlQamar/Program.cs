@@ -16,7 +16,9 @@ var webJson = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 var emailRx = new Regex(@"^[^\s@]+@[^\s@]+\.[^\s@]+$");
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDbContext<ShopDb>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+// Read the connection string per request, so editing appsettings.Production.json takes effect without a restart.
+builder.Services.AddDbContext<ShopDb>((sp, o) =>
+    o.UseSqlServer(sp.GetRequiredService<IConfiguration>().GetConnectionString("Default")));
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(o =>
 {
     o.Cookie.Name = "aqt_admin";
@@ -42,23 +44,40 @@ builder.Services.AddRateLimiter(o =>
 
 var app = builder.Build();
 
-// A bad connection string should not take the whole site down: the shop pages still load
-// and /api/health says what is wrong.
+// A bad connection string should not take the whole site down: the shop pages still load,
+// /api/health says what is wrong, and setup is retried on the next API call.
 string? dbError = null;
-try
+var dbReady = false;
+var dbLock = new object();
+void TryInitialiseDb(IServiceProvider services)
 {
-    using var scope = app.Services.CreateScope();
-    ShopDb.Initialise(scope.ServiceProvider.GetRequiredService<ShopDb>(), app.Configuration);
+    lock (dbLock)
+    {
+        if (dbReady) return;
+        try
+        {
+            using var scope = services.CreateScope();
+            ShopDb.Initialise(scope.ServiceProvider.GetRequiredService<ShopDb>(), app.Configuration);
+            dbReady = true;
+            dbError = null;
+        }
+        catch (Exception ex)
+        {
+            dbError = ex.GetBaseException().Message;
+            app.Logger.LogError(ex, "Database setup failed");
+        }
+    }
 }
-catch (Exception ex)
-{
-    dbError = ex.GetBaseException().Message;
-    app.Logger.LogError(ex, "Database setup failed");
-}
+TryInitialiseDb(app.Services);
 
 app.UseStatusCodePagesWithReExecute("/404.html");
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.Use(async (ctx, next) =>
+{
+    if (!dbReady && ctx.Request.Path.StartsWithSegments("/api")) TryInitialiseDb(app.Services);
+    await next();
+});
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -81,7 +100,7 @@ var api = app.MapGroup("/api");
 
 api.MapGet("/health", async (ShopDb db) =>
 {
-    if (dbError is not null) return Results.Json(new { ok = false, database = "Setup failed: " + dbError }, statusCode: 503);
+    if (!dbReady) return Results.Json(new { ok = false, database = "Setup failed: " + dbError }, statusCode: 503);
     try { return Results.Ok(new { ok = true, database = "Connected", products = await db.Products.CountAsync() }); }
     catch (Exception ex) { return Results.Json(new { ok = false, database = ex.GetBaseException().Message }, statusCode: 503); }
 });
