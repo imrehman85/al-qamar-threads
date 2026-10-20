@@ -1,11 +1,15 @@
-/* Al Qamar Threads — shared catalogue and browser store (used by the shop and the admin). */
+/* Al Qamar Threads — shared catalogue and data layer (used by the shop and the admin).
+   Live mode: products and sign-ups go to Supabase, payment goes through Stripe (/api/*).
+   Demo mode (no Supabase settings in config.js): everything is kept in this browser. */
 (function () {
   "use strict";
 
   var TM = "™";
   var TOWEL_SIZES = ["Hand towel 50 × 90 cm", "Bath towel 70 × 140 cm", "Bath sheet 90 × 160 cm"];
+  var CFG = window.AQT_CONFIG || {};
+  var LIVE = !!(CFG.supabaseUrl && CFG.supabaseAnonKey);
 
-  // Sample catalogue. Real names, sizes and prices come from WooCommerce on build.
+  // Fallback catalogue, also the demo data. In live mode the products table is the source of truth.
   var BASE = [
     { slug: "moon-bath-towel", collection: "moon", name: "Moon" + TM + " Bath Towel", colour: "White",
       sizes: TOWEL_SIZES, prices: [14, 24, 32], img: "1527986654082-0b5b3fef2632" },
@@ -24,22 +28,78 @@
     try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (e) { return false; }
   }
 
-  // Admin edits (name, prices, hidden, soldOut) are stored per slug and laid over the base catalogue.
-  function catalog() {
+  function shape(p, e) {
+    e = e || {};
+    return {
+      slug: p.slug, collection: p.collection, colour: p.colour, sizes: p.sizes, img: p.img,
+      url: "product-" + p.slug + ".html",
+      name: e.name || p.name,
+      prices: ((e.prices && e.prices.length === p.prices.length) ? e.prices : p.prices).map(Number),
+      hidden: !!(e.hidden != null ? e.hidden : p.hidden),
+      soldOut: !!(e.soldOut != null ? e.soldOut : p.sold_out)
+    };
+  }
+
+  // Demo mode: admin edits are stored per slug and laid over the base catalogue.
+  function demoCatalog() {
     var edits = get("aqt-products", {});
-    return BASE.map(function (p) {
-      var e = edits[p.slug] || {};
-      return {
-        slug: p.slug, collection: p.collection, colour: p.colour, sizes: p.sizes, img: p.img,
-        url: "product-" + p.slug + ".html",
-        name: e.name || p.name,
-        prices: (e.prices && e.prices.length === p.prices.length) ? e.prices : p.prices,
-        hidden: !!e.hidden,
-        soldOut: !!e.soldOut
-      };
+    return BASE.map(function (p) { return shape(p, edits[p.slug]); });
+  }
+
+  function rest(path, opts) {
+    opts = opts || {};
+    var headers = { apikey: CFG.supabaseAnonKey, Authorization: "Bearer " + CFG.supabaseAnonKey };
+    for (var k in (opts.headers || {})) headers[k] = opts.headers[k];
+    return fetch(CFG.supabaseUrl.replace(/\/$/, "") + "/rest/v1/" + path, { method: opts.method || "GET", headers: headers, body: opts.body });
+  }
+
+  var cache = null;
+  function loadCatalog() {
+    if (!LIVE) return Promise.resolve(demoCatalog());
+    if (cache) return cache;
+    cache = rest("products?select=*&order=sort.asc")
+      .then(function (r) { if (!r.ok) throw new Error("products " + r.status); return r.json(); })
+      .then(function (rows) { return rows.map(function (p) { return shape(p); }); })
+      .catch(function (err) {
+        console.warn("Using built-in catalogue:", err);
+        cache = null;
+        return BASE.map(function (p) { return shape(p); });
+      });
+    return cache;
+  }
+
+  // Email sign-up. Duplicate emails count as success.
+  function subscribe(email, source) {
+    email = String(email || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return Promise.reject(new Error("invalid"));
+    if (!LIVE) {
+      var subs = get("aqt-subscribers", []);
+      if (!subs.some(function (s) { return s.email.toLowerCase() === email; })) {
+        subs.unshift({ email: email, date: new Date().toISOString(), source: source || "Website" });
+        set("aqt-subscribers", subs);
+      }
+      return Promise.resolve();
+    }
+    return rest("subscribers?on_conflict=email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates,return=minimal" },
+      body: JSON.stringify({ email: email, source: source || "Website" })
+    }).then(function (r) { if (!r.ok && r.status !== 409) throw new Error("subscribe " + r.status); });
+  }
+
+  // Live checkout: the server re-prices the bag from the database and returns a Stripe Checkout URL.
+  function startCheckout(cart) {
+    return fetch("/api/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: cart.map(function (l) { return { slug: l.id, size: l.sizeIndex, qty: l.qty }; }) })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (data) {
+        if (!r.ok || !data.url) throw new Error(data.error || "Checkout is not available right now.");
+        return data.url;
+      });
     });
   }
-  function bySlug(slug) { return catalog().filter(function (p) { return p.slug === slug; })[0]; }
 
   function imgUrl(id, w) { return "https://images.unsplash.com/photo-" + id + "?auto=format&fit=crop&w=" + w + "&q=72"; }
   function money(n) { return "£" + Number(n).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -49,8 +109,9 @@
   }
 
   window.AQT = {
-    BASE: BASE, catalog: catalog, bySlug: bySlug, get: get, set: set,
-    imgUrl: imgUrl, money: money, fromPrice: fromPrice,
+    LIVE: LIVE, CONFIG: CFG, BASE: BASE,
+    loadCatalog: loadCatalog, demoCatalog: demoCatalog, subscribe: subscribe, startCheckout: startCheckout,
+    get: get, set: set, imgUrl: imgUrl, money: money, fromPrice: fromPrice,
     SHIPPING: 3.99, FREE_OVER: 50
   };
 })();

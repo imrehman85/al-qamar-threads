@@ -4,12 +4,16 @@ A clickable static mock-up of the Al Qamar Threads shop (Home, Shop, product pag
 
 It is for approval before the WordPress / WooCommerce build. Photos are free-licence samples from Unsplash, to be swapped for Al Qamar's own product shots. Prices, company number and address are placeholders.
 
-## Admin demo
+## Live shop (Cloudflare Pages + Supabase + Stripe)
 
-`admin.html` (link in the footer) is a demo dashboard: orders, products (name, prices, visibility, sold out), email sign-ups and store settings, with sample data.
+The site runs in two modes:
 
-- Login: `admin` / `admin` (set in `assets/js/admin-config.js`)
-- This is not real security. The site is static, so the login and all data live in the visitor's own browser. On the live site, the WooCommerce admin does this job.
+- **Demo mode** (`assets/js/config.js` empty): data lives in each visitor's browser. Admin login `admin` / `admin`.
+- **Live mode** (Supabase URL and anon key in `config.js`): products, orders and sign-ups are stored in Supabase, payment goes through Stripe Checkout, and the admin uses a secure Supabase login.
+
+Server code lives in `functions/api/` (Cloudflare Pages Functions) and `lib/shop.js`. The database schema and security rules are in `supabase/schema.sql`.
+
+**To go live, follow [SETUP.md](SETUP.md).**
 
 ## Edit and rebuild
 
@@ -20,3 +24,11 @@ python build.py
 ```
 
 Styles live in `assets/css/style.css`, cart and gallery behaviour in `assets/js/main.js`.
+
+Run the server tests and the site with its API locally:
+
+```bash
+npm install
+npm test
+npm run dev
+```
