@@ -29,10 +29,6 @@
 <section class="page-intro" style="padding-bottom:40px"><div class="narrow"><h1>Checkout</h1><p class="lede">No account needed.</p></div></section>
 <section class="section" style="padding-top:0"><div class="wrap cart-layout">
   <form class="checkout-form">
-    <div data-live-only>
-      <p class="lede" style="margin-bottom:28px">You&rsquo;ll add your delivery address and pay on the next page, secured by Stripe. Apple Pay and Google Pay are available there.</p>
-    </div>
-    <div data-demo-only>
     <div class="express" aria-label="Express checkout">
       <button type="button" class="pay-btn" aria-label="Pay with Apple Pay">Apple Pay</button>
       <button type="button" class="pay-btn" aria-label="Pay with Google Pay">Google Pay</button>
@@ -59,12 +55,9 @@
     <fieldset><legend>Payment</legend>
       <div class="card-mock">Card details field (WooPayments / Stripe) appears here. Test mode until launch.</div>
     </fieldset>
-    </div>
     <label class="check"><input type="checkbox" required> I have read the <a href="terms.html">Terms</a>, <a href="privacy.html">Privacy Policy</a> and <a href="shipping-returns.html">Shipping &amp; Returns</a>, including my 14-day right to cancel.</label>
-    <label class="check" data-demo-only><input type="checkbox"> Create an account for faster checkout next time (optional)</label>
-    <button type="submit" class="btn btn--block" style="margin-top:20px" data-demo-only>Place order</button>
-    <button type="submit" class="btn btn--block" style="margin-top:20px" data-live-only>Continue to payment</button>
-    <p class="form-msg" data-checkout-error role="alert"></p>
+    <label class="check"><input type="checkbox"> Create an account for faster checkout next time (optional)</label>
+    <button type="submit" class="btn btn--block" style="margin-top:20px">Place order</button>
   </form>
   <aside class="summary" aria-label="Order summary">
     <h2>Your order</h2>
@@ -106,7 +99,6 @@
     </div>
   </div>
 </footer>
-<script src="assets/js/config.js" defer></script>
 <script src="assets/js/catalog.js" defer></script>
 <script src="assets/js/main.js" defer></script>
 </body>

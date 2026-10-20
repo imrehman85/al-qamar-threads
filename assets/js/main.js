@@ -1,20 +1,11 @@
-/* Al Qamar Threads — shop behaviour: nav, cart, gallery, forms, checkout. Needs config.js and catalog.js. */
+/* Al Qamar Threads — mock-up behaviour: nav, cart, gallery, forms. Needs catalog.js. */
 (function () {
   "use strict";
 
   var A = window.AQT, money = A.money;
   var CART = "aqt-cart";
 
-  function getCart() {
-    // Older bags stored only the size label; recover the size index from it.
-    return A.get(CART, []).map(function (l) {
-      if (l.sizeIndex == null) {
-        var base = A.BASE.filter(function (p) { return p.slug === l.id; })[0];
-        l.sizeIndex = base ? Math.max(0, base.sizes.indexOf(l.size)) : 0;
-      }
-      return l;
-    });
-  }
+  function getCart() { return A.get(CART, []); }
   function setCart(c) { A.set(CART, c); updateCount(); }
   function cartTotals(cart) {
     var sub = cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0);
@@ -25,7 +16,7 @@
     var n = getCart().reduce(function (s, i) { return s + i.qty; }, 0);
     document.querySelectorAll("[data-cart-count]").forEach(function (el) { el.textContent = n ? "(" + n + ")" : ""; });
   }
-  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function thumb(id, alt) { return '<div class="pic ratio-45"><img src="' + A.imgUrl(id, 240) + '" alt="' + esc(alt || "") + '" loading="lazy"></div>'; }
 
   // Header
@@ -50,32 +41,33 @@
     document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("in"); });
   }
 
-  // Email sign-up
+  // Email sign-up — stored so it shows in the admin
   document.querySelectorAll(".signup-form").forEach(function (f) {
     f.addEventListener("submit", function (e) {
       e.preventDefault();
-      var msg = f.parentNode.querySelector(".form-msg"), btn = f.querySelector("button");
-      btn.disabled = true;
-      A.subscribe(f.email.value, f.getAttribute("data-source")).then(function () {
-        if (msg) msg.textContent = "Thank you. We’ll be in touch, quietly.";
-        f.reset();
-      }, function (err) {
-        if (msg) msg.textContent = err.message === "invalid" ? "Please enter a valid email address." : "Sorry, that didn’t work. Please try again.";
-      }).then(function () { btn.disabled = false; });
+      var msg = f.parentNode.querySelector(".form-msg");
+      var email = (f.email.value || "").trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (msg) msg.textContent = "Please enter a valid email address."; return; }
+      var subs = A.get("aqt-subscribers", []);
+      if (!subs.some(function (s) { return s.email.toLowerCase() === email.toLowerCase(); })) {
+        subs.unshift({ email: email, date: new Date().toISOString(), source: f.getAttribute("data-source") || "Website" });
+        A.set("aqt-subscribers", subs);
+      }
+      if (msg) msg.textContent = "Thank you. We’ll be in touch, quietly.";
+      f.reset();
     });
   });
 
-  // Shop — apply live product data, then filter
-  var cards = document.querySelectorAll(".product-card[data-slug]");
-  if (cards.length) A.loadCatalog().then(function (cat) {
-    cards.forEach(function (card) {
-      var p = cat.filter(function (x) { return x.slug === card.getAttribute("data-slug"); })[0];
-      if (!p) return;
-      card.querySelector("h3").textContent = p.name;
-      card.querySelector(".price").textContent = A.fromPrice(p) + (p.soldOut ? " · Sold out" : "");
-      if (p.hidden) { card.setAttribute("data-hidden", ""); card.hidden = true; }
-    });
+  // Shop — apply admin edits, then filter
+  document.querySelectorAll(".product-card[data-slug]").forEach(function (card) {
+    var p = A.bySlug(card.getAttribute("data-slug"));
+    if (!p) return;
+    card.querySelector("h3").textContent = p.name;
+    card.querySelector(".price").textContent = p.soldOut ? fromSold(p) : A.fromPrice(p);
+    if (p.hidden) card.setAttribute("data-hidden", "");
+    card.hidden = p.hidden;
   });
+  function fromSold(p) { return A.fromPrice(p) + " · Sold out"; }
   var filters = document.querySelectorAll(".filters button");
   filters.forEach(function (b) {
     b.addEventListener("click", function () {
@@ -90,29 +82,18 @@
   // Product page
   var pp = document.querySelector("[data-product]");
   if (pp) {
-    var id = pp.getAttribute("data-product");
+    var id = pp.getAttribute("data-product"), product = A.bySlug(id), sizeIdx = product.sizes.length > 1 ? 1 : 0;
     var priceEl = document.querySelector("[data-price]"), sizeName = document.querySelector("[data-size-name]");
-    var addBtn = document.querySelector("[data-add]"), qtyInput = document.querySelector(".qty input");
-    var product = null, sizeIdx = document.querySelectorAll(".size-btn").length > 1 ? 1 : 0;
-    addBtn.disabled = true;
-
+    var addBtn = document.querySelector("[data-add]");
+    document.querySelector(".product-info h1").textContent = product.name;
+    if (product.hidden) {
+      document.querySelector(".product-info .product-desc").insertAdjacentHTML("afterend", '<p class="sum-note">This piece is not currently available.</p>');
+    }
+    if (product.soldOut || product.hidden) { addBtn.disabled = true; addBtn.textContent = product.hidden ? "Unavailable" : "Sold out"; }
     function showPrice() {
-      if (!product) return;
       priceEl.textContent = money(product.prices[sizeIdx]);
       if (sizeName) sizeName.textContent = product.sizes[sizeIdx];
     }
-    A.loadCatalog().then(function (cat) {
-      product = cat.filter(function (p) { return p.slug === id; })[0];
-      if (!product) return;
-      document.querySelector(".product-info h1").textContent = product.name;
-      if (product.hidden) {
-        document.querySelector(".product-info .product-desc").insertAdjacentHTML("afterend", '<p class="sum-note">This piece is not currently available.</p>');
-      }
-      if (product.soldOut || product.hidden) addBtn.textContent = product.hidden ? "Unavailable" : "Sold out";
-      else addBtn.disabled = false;
-      showPrice();
-    });
-
     document.querySelectorAll(".size-btn").forEach(function (b, i) {
       b.addEventListener("click", function () {
         sizeIdx = i;
@@ -120,6 +101,9 @@
         showPrice();
       });
     });
+    showPrice();
+
+    var qtyInput = document.querySelector(".qty input");
     document.querySelectorAll("[data-qty]").forEach(function (b) {
       b.addEventListener("click", function () {
         qtyInput.value = Math.max(1, Math.min(10, (parseInt(qtyInput.value, 10) || 1) + parseInt(b.getAttribute("data-qty"), 10)));
@@ -127,13 +111,13 @@
     });
 
     addBtn.addEventListener("click", function () {
-      if (addBtn.disabled || !product) return;
+      if (addBtn.disabled) return;
       var qty = Math.max(1, Math.min(10, parseInt(qtyInput.value, 10) || 1));
       var size = product.sizes[sizeIdx], price = product.prices[sizeIdx];
       var cart = getCart();
-      var line = cart.filter(function (l) { return l.id === id && l.sizeIndex === sizeIdx; })[0];
+      var line = cart.filter(function (l) { return l.id === id && l.size === size; })[0];
       if (line) { line.qty = Math.min(10, line.qty + qty); line.price = price; }
-      else cart.push({ id: id, name: product.name, colour: product.colour, size: size, sizeIndex: sizeIdx, price: price, qty: qty, img: product.img, url: product.url });
+      else cart.push({ id: id, name: product.name, colour: product.colour, size: size, price: price, qty: qty, img: product.img, url: product.url });
       setCart(cart);
       document.querySelector(".added-msg").innerHTML = "Added to your bag. <a class=\"text-link\" href=\"cart.html\">View bag</a>";
     });
@@ -157,13 +141,14 @@
   function closeLightbox() { if (lb) lb.classList.remove("open"); }
   var gm = document.querySelector(".gallery-main");
   if (gm && lb) {
-    var openLb = function () {
-      var src = gm.querySelector("img"), big = lb.querySelector("img");
+    function openLb() {
+      var src = gm.querySelector("img");
+      var big = lb.querySelector("img");
       big.src = A.imgUrl(src.getAttribute("data-photo"), 2000);
       big.alt = src.alt;
       lb.classList.add("open");
       lb.querySelector(".lightbox-close").focus();
-    };
+    }
     gm.addEventListener("click", openLb);
     gm.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openLb(); } });
     lb.addEventListener("click", function (e) { if (e.target === lb || e.target.classList.contains("lightbox-close")) closeLightbox(); });
@@ -215,12 +200,10 @@
     });
   }
 
-  // Checkout — summary shows product names only
+  // Checkout summary — product name only
   var co = document.querySelector("[data-checkout-summary]");
   if (co) {
     var cart = getCart(), t = cartTotals(cart);
-    // Live: Stripe collects contact, address and card. Demo: our own form stands in for it.
-    document.querySelectorAll(A.LIVE ? "[data-demo-only]" : "[data-live-only]").forEach(function (el) { el.remove(); });
     if (!cart.length) {
       co.innerHTML = '<p class="sum-note">Your bag is empty. <a class="text-link" href="shop.html">Shop the collection</a></p>';
     } else {
@@ -231,20 +214,11 @@
         '<div class="sum-row"><span>Delivery</span><span>' + (t.ship ? money(t.ship) : "Free") + '</span></div>' +
         '<div class="sum-row total"><span>Total</span><span>' + money(t.total) + '</span></div>';
     }
-    var form = document.querySelector(".checkout-form"), err = document.querySelector("[data-checkout-error]");
+    var form = document.querySelector(".checkout-form");
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       var items = getCart();
       if (!items.length) { window.location.href = "shop.html"; return; }
-      if (A.LIVE) {
-        var btn = form.querySelector('[type="submit"]');
-        btn.disabled = true; btn.textContent = "Opening secure payment…"; if (err) err.textContent = "";
-        A.startCheckout(items).then(function (url) { window.location.href = url; }, function (x) {
-          btn.disabled = false; btn.textContent = "Continue to payment";
-          if (err) err.textContent = x.message;
-        });
-        return;
-      }
       var order = {
         no: "AQT-" + String(Math.floor(10000 + Math.random() * 89999)),
         date: new Date().toISOString(), status: "Processing",
@@ -256,7 +230,7 @@
       var orders = A.get("aqt-orders", []);
       orders.unshift(order);
       A.set("aqt-orders", orders);
-      try { sessionStorage.setItem("aqt-order", JSON.stringify(order)); } catch (x) {}
+      try { sessionStorage.setItem("aqt-order", JSON.stringify(order)); } catch (err) {}
       setCart([]);
       window.location.href = "order-confirmation.html";
     });
@@ -267,28 +241,19 @@
 
   // Confirmation
   var conf = document.querySelector("[data-confirmation]");
-  function showOrder(o) {
-    conf.innerHTML =
-      '<p class="eyebrow">' + (o.no ? "Order " + esc(o.no) : "Order confirmed") + '</p>' +
-      '<h1>Thank you' + (o.fname ? ", " + esc(o.fname) : "") + '.</h1>' +
-      '<p class="lede">Your order is confirmed.' + (o.email ? " A receipt is on its way to " + esc(o.email) + "." : "") + '</p>' +
-      '<div class="summary" style="text-align:left;margin:48px 0">' +
-      o.items.map(function (l) { return '<div class="mini-item"><span>' + esc(l.name) + (l.qty > 1 ? " × " + l.qty : "") + '</span><span>' + money(l.price * l.qty) + '</span></div>'; }).join("") +
-      '<div class="sum-row"><span>Delivery</span><span>' + (o.totals.ship ? money(o.totals.ship) : "Free") + '</span></div>' +
-      '<div class="sum-row total"><span>Total paid</span><span>' + money(o.totals.total) + '</span></div>' +
-      (o.address ? '<p class="sum-note" style="margin-bottom:0">Delivering to ' + esc(o.address) + '</p>' : "") + '</div>';
-  }
   if (conf) {
-    var sid = new URLSearchParams(location.search).get("session_id");
-    if (sid) {
-      setCart([]);
-      fetch("/api/order?session_id=" + encodeURIComponent(sid))
-        .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
-        .then(showOrder, function () { /* keep the generic thank-you */ });
-    } else {
-      var o = null;
-      try { o = JSON.parse(sessionStorage.getItem("aqt-order") || "null"); } catch (e) {}
-      if (o) showOrder(o);
+    var o = null;
+    try { o = JSON.parse(sessionStorage.getItem("aqt-order") || "null"); } catch (e) {}
+    if (o) {
+      conf.innerHTML =
+        '<p class="eyebrow">Order ' + esc(o.no) + '</p>' +
+        '<h1>Thank you, ' + esc(o.fname || o.name || "") + '.</h1>' +
+        '<p class="lede">Your order is confirmed. A receipt is on its way to ' + esc(o.email) + '.</p>' +
+        '<div class="summary" style="text-align:left;margin:48px 0">' +
+        o.items.map(function (l) { return '<div class="mini-item"><span>' + esc(l.name) + (l.qty > 1 ? " × " + l.qty : "") + '</span><span>' + money(l.price * l.qty) + '</span></div>'; }).join("") +
+        '<div class="sum-row"><span>Delivery</span><span>' + (o.totals.ship ? money(o.totals.ship) : "Free") + '</span></div>' +
+        '<div class="sum-row total"><span>Total paid</span><span>' + money(o.totals.total) + '</span></div>' +
+        (o.address ? '<p class="sum-note" style="margin-bottom:0">Delivering to ' + esc(o.address) + '</p>' : "") + '</div>';
     }
   }
 
