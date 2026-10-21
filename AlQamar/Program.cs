@@ -70,15 +70,16 @@ void TryInitialiseDb(IServiceProvider services)
 }
 TryInitialiseDb(app.Services);
 
-// Somee's free hosting appends an ad script after every HTML response, past its Content-Length.
-// On a reused keep-alive connection those extra bytes corrupt the next response and the browser
-// shows a blank page until a refresh. Closing the connection after HTML responses discards them.
+// Somee's free hosting appends an ad script to every HTML response. When the response carries a
+// Content-Length the script lands past the end of the body, and on a reused connection those bytes
+// corrupt the next response (blank page until a refresh). Sending HTML without a length (chunked)
+// keeps the appended script inside the body.
 app.Use((ctx, next) =>
 {
     ctx.Response.OnStarting(() =>
     {
         if (ctx.Response.ContentType?.StartsWith("text/html", StringComparison.OrdinalIgnoreCase) == true)
-            ctx.Response.Headers.Connection = "close";
+            ctx.Response.ContentLength = null;
         return Task.CompletedTask;
     });
     return next();
