@@ -4,7 +4,8 @@
 
   var A = window.AQT, money = A.money;
   var STATUSES = ["Awaiting payment", "Processing", "Shipped", "Completed", "Refunded", "Cancelled"];
-  var TITLES = { overview: "Overview", orders: "Orders", products: "Products", subscribers: "Subscribers", settings: "Settings" };
+  var TITLES = { overview: "Overview", orders: "Orders", products: "Products", subscribers: "Subscribers",
+    reviews: "Reviews", discounts: "Discount codes", reports: "Reports", settings: "Settings" };
   var view = document.getElementById("view");
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
@@ -23,7 +24,8 @@
   function counts(o) { return ["Awaiting payment", "Refunded", "Cancelled"].indexOf(o.status) === -1; }
   function shapeProduct(p) {
     return { slug: p.slug, collection: p.collection, colour: p.colour, sizes: p.sizes, img: p.img, url: "product-" + p.slug + ".html",
-      name: p.name, prices: p.prices.map(Number), hidden: !!p.hidden, soldOut: !!p.sold_out };
+      name: p.name, prices: p.prices.map(Number), hidden: !!p.hidden, soldOut: !!p.soldOut,
+      manualSoldOut: !!p.manualSoldOut, stock: p.stock || p.sizes.map(function () { return null; }) };
   }
 
   // ======================= Data (backend API) =======================
@@ -36,11 +38,18 @@
     deleteOrder: function (no) { return A.api("admin/orders/" + encodeURIComponent(no), { method: "DELETE" }); },
     products: function () { return A.api("admin/products").then(function (rows) { return rows.map(shapeProduct); }); },
     saveProduct: function (slug, v) {
-      return A.api("admin/products/" + encodeURIComponent(slug), { method: "PUT", body: { name: v.name, prices: v.prices, hidden: v.hidden, soldOut: v.soldOut } });
+      return A.api("admin/products/" + encodeURIComponent(slug), { method: "PUT", body: { name: v.name, prices: v.prices, hidden: v.hidden, soldOut: v.soldOut, stock: v.stock } });
     },
     subscribers: function () { return A.api("admin/subscribers"); },
     deleteSubscriber: function (id) { return A.api("admin/subscribers/" + id, { method: "DELETE" }); },
-    changePassword: function (current, next) { return A.api("admin/password", { method: "POST", body: { current: current, next: next } }); }
+    changePassword: function (current, next) { return A.api("admin/password", { method: "POST", body: { current: current, next: next } }); },
+    setTracking: function (no, status, tracking) { return A.api("admin/orders/" + encodeURIComponent(no), { method: "PATCH", body: { status: status, tracking: tracking } }); },
+    discounts: function () { return A.api("admin/discounts"); },
+    saveDiscount: function (d) { return A.api("admin/discounts", { method: "POST", body: d }); },
+    deleteDiscount: function (code) { return A.api("admin/discounts/" + encodeURIComponent(code), { method: "DELETE" }); },
+    reviews: function () { return A.api("admin/reviews"); },
+    approveReview: function (id, ok) { return A.api("admin/reviews/" + id, { method: "PATCH", body: { approved: ok } }); },
+    deleteReview: function (id) { return A.api("admin/reviews/" + id, { method: "DELETE" }); }
   };
 
   // ======================= Auth =======================
@@ -80,7 +89,8 @@
     document.getElementById("view-title").textContent = TITLES[name];
     document.title = TITLES[name] + " | Admin | Al Qamar Threads";
     view.innerHTML = '<p style="color:var(--muted)">Loading…</p>';
-    var render = { overview: renderOverview, orders: renderOrders, products: renderProducts, subscribers: renderSubscribers, settings: renderSettings }[name];
+    var render = { overview: renderOverview, orders: renderOrders, products: renderProducts, subscribers: renderSubscribers,
+      reviews: renderReviews, discounts: renderDiscounts, reports: renderReports, settings: renderSettings }[name];
     Promise.resolve(render()).catch(function (err) {
       view.innerHTML = '<div class="card"><h2>Couldn’t load this page</h2><p class="hint">' + esc(err.message) + '</p></div>';
     });
@@ -93,6 +103,10 @@
       setCount("orders", open ? open + " new" : "");
       setCount("products", r[1].length);
       setCount("subscribers", r[2].length);
+    }).catch(function () {});
+    DB.reviews().then(function (rv) {
+      var waiting = rv.filter(function (x) { return !x.approved; }).length;
+      setCount("reviews", waiting ? waiting + " new" : "");
     }).catch(function () {});
   }
   function setCount(k, v) { var el = document.querySelector('[data-count="' + k + '"]'); if (el) el.textContent = v; }
@@ -109,7 +123,14 @@
       all.filter(counts).forEach(function (o) { o.items.forEach(function (l) { units[l.id] = (units[l.id] || 0) + l.qty; }); });
       var top = cat.map(function (p) { return { p: p, n: units[p.slug] || 0 }; }).sort(function (a, b) { return b.n - a.n; });
 
+      var low = [];
+      cat.forEach(function (p) {
+        (p.stock || []).forEach(function (n, i) { if (n != null && n <= 3) low.push({ p: p, size: p.sizes[i], n: n }); });
+      });
       view.innerHTML =
+        (low.length ? '<section class="card low-stock"><h2>Low stock</h2><p class="hint">Sizes with 3 or fewer left.</p><ul>' +
+          low.map(function (x) { return '<li><span>' + esc(x.p.name) + ' \u00b7 ' + esc(x.size) + '</span><strong>' + (x.n === 0 ? "Sold out" : x.n + " left") + '</strong></li>'; }).join("") +
+          '</ul><button class="btn btn--ghost btn--sm" type="button" data-goto-products>Update stock</button></section>' : "") +
         '<div class="kpis">' +
         kpi("Revenue", money(revenue), "Last 30 days, paid orders") +
         kpi("Orders", recent.length, "Last 30 days") +
@@ -130,6 +151,8 @@
 
       drawChart(document.getElementById("chart"), all);
       view.querySelector("[data-goto]").addEventListener("click", function () { go("orders"); });
+      var gp = view.querySelector("[data-goto-products]");
+      if (gp) gp.addEventListener("click", function () { go("products"); });
       bindOrderRows(all);
     });
   }
@@ -247,16 +270,22 @@
       '<button class="close" type="button" aria-label="Close">&times;</button></div>' +
       '<dl class="dl"><dt>Customer</dt><dd>' + esc(o.name) + '</dd><dt>Email</dt><dd><a href="mailto:' + esc(o.email) + '">' + esc(o.email) + '</a></dd>' +
       '<dt>Deliver to</dt><dd>' + esc(o.address || "—") + '</dd><dt>Delivery</dt><dd>Royal Mail Tracked 48</dd>' +
-      '<dt>Payment</dt><dd>Bank transfer</dd></dl>' +
+      '<dt>Payment</dt><dd>Bank transfer</dd>' +
+      (o.giftWrap ? '<dt>Gift</dt><dd>Gift wrap' + (o.giftMessage ? '<br><em>\u201c' + esc(o.giftMessage) + '\u201d</em>' : "") + '</dd>' : "") + '</dl>' +
       '<div class="line-items">' + o.items.map(function (l) {
         return '<div><span>' + esc(l.name) + '<br><small style="color:var(--muted)">' + esc(l.size) + ' × ' + l.qty + '</small></span><span>' + money(l.price * l.qty) + '</span></div>';
       }).join("") +
+      (o.totals.discount ? '<div><span>Discount' + (o.discountCode ? " (" + esc(o.discountCode) + ")" : "") + '</span><span>\u2212' + money(o.totals.discount) + '</span></div>' : "") +
       '<div><span>Delivery</span><span>' + (o.totals.ship ? money(o.totals.ship) : "Free") + '</span></div>' +
       '<div class="total"><span>Total</span><span>' + money(o.totals.total) + '</span></div></div>' +
       '<div class="field"><label for="d-status">Status</label><select id="d-status">' +
       STATUSES.map(function (s) { return '<option' + (s === o.status ? " selected" : "") + '>' + s + '</option>'; }).join("") + '</select></div>' +
-      '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" type="button" id="d-save">Update status</button>' +
-      '<button class="btn btn--danger" type="button" id="d-del">Delete order</button></div>';
+      '<div class="field"><label for="d-track">Royal Mail tracking number</label><input id="d-track" maxlength="60" value="' + esc(o.tracking || "") + '" placeholder="e.g. AB123456789GB"></div>' +
+      '<p class="hint" style="margin:-8px 0 18px;font-size:13px;color:var(--muted)">Customers see the status and tracking on the Track order page. Cancelling puts the items back in stock.</p>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"><button class="btn" type="button" id="d-save">Save</button>' +
+      '<button class="btn btn--ghost" type="button" id="d-slip">Packing slip</button>' +
+      '<button class="btn btn--ghost" type="button" id="d-inv">Invoice</button></div>' +
+      '<button class="btn btn--danger btn--sm" type="button" id="d-del">Delete order</button>';
     document.body.appendChild(bg); document.body.appendChild(dr);
     var close = function () { bg.remove(); dr.remove(); document.removeEventListener("keydown", onKey); };
     var onKey = function (e) { if (e.key === "Escape") close(); };
@@ -266,8 +295,10 @@
     dr.querySelector(".close").focus();
     dr.querySelector("#d-save").addEventListener("click", function () {
       var st = dr.querySelector("#d-status").value;
-      DB.updateOrder(o.no, st).then(function () { close(); toast("Order " + o.no + " marked " + st.toLowerCase()); refresh(); }, fail);
+      DB.setTracking(o.no, st, dr.querySelector("#d-track").value).then(function () { close(); toast("Order " + o.no + " saved"); refresh(); }, fail);
     });
+    dr.querySelector("#d-slip").addEventListener("click", function () { printDoc(o, false); });
+    dr.querySelector("#d-inv").addEventListener("click", function () { printDoc(o, true); });
     dr.querySelector("#d-del").addEventListener("click", function () {
       if (!confirm("Delete order " + o.no + "? This can’t be undone.")) return;
       DB.deleteOrder(o.no).then(function () { close(); toast("Order deleted"); refresh(); }, fail);
@@ -289,9 +320,15 @@
               return '<div class="field"><label for="p-' + p.slug + '-' + i + '">' + esc(s) + '</label><div class="money-input"><span>£</span>' +
                 '<input id="p-' + p.slug + '-' + i + '" name="price" type="number" min="0" step="0.01" inputmode="decimal" value="' + p.prices[i] + '" required></div></div>';
             }).join("") + '</div>' +
+            '<p class="stock-head">Stock <span>(leave blank to not track)</span></p>' +
+            '<div class="price-grid">' + p.sizes.map(function (s, i) {
+              var n = p.stock ? p.stock[i] : null;
+              return '<div class="field"><label for="s-' + p.slug + '-' + i + '">' + esc(s) + (n === 0 ? ' <b class="out">sold out</b>' : n != null && n <= 3 ? ' <b class="out">low</b>' : "") + '</label>' +
+                '<input id="s-' + p.slug + '-' + i + '" name="stock" type="number" min="0" step="1" inputmode="numeric" value="' + (n == null ? "" : n) + '" placeholder="Not tracked"></div>';
+            }).join("") + '</div>' +
             '<div class="prod-foot">' +
             '<label class="switch"><input type="checkbox" name="visible"' + (p.hidden ? "" : " checked") + '> Visible in shop</label>' +
-            '<label class="switch"><input type="checkbox" name="soldOut"' + (p.soldOut ? " checked" : "") + '> Sold out</label>' +
+            '<label class="switch"><input type="checkbox" name="soldOut"' + (p.manualSoldOut ? " checked" : "") + '> Mark sold out</label>' +
             '<div class="btns">' + '<button class="btn btn--sm" type="submit">Save</button></div></div></div></form>';
         }).join("") + '</div>';
 
@@ -302,7 +339,8 @@
           var prices = [].map.call(f.querySelectorAll('[name="price"]'), function (i) { return Math.round(parseFloat(i.value) * 100) / 100; });
           var name = f.elements.namedItem("name").value.trim();
           if (prices.some(function (n) { return !(n > 0); }) || !name) { toast("Please check the name and prices"); return; }
-          DB.saveProduct(slug, { name: name, prices: prices, hidden: !f.elements.namedItem("visible").checked, soldOut: f.elements.namedItem("soldOut").checked })
+          var stock = [].map.call(f.querySelectorAll('[name="stock"]'), function (i) { return i.value === "" ? null : Math.max(0, parseInt(i.value, 10) || 0); });
+          DB.saveProduct(slug, { name: name, prices: prices, hidden: !f.elements.namedItem("visible").checked, soldOut: f.elements.namedItem("soldOut").checked, stock: stock })
             .then(function () { toast("Saved " + name); renderProducts(); }, fail);
         });
       });
@@ -355,6 +393,155 @@
       DB.changePassword(f.querySelector("#pw-cur").value, f.querySelector("#pw-new").value)
         .then(function () { f.reset(); toast("Password changed"); }, fail);
     });
+  }
+
+  // ======================= Reviews =======================
+  function renderReviews() {
+    return Promise.all([DB.reviews(), DB.products()]).then(function (r) {
+      var list = r[0], names = {};
+      r[1].forEach(function (p) { names[p.slug] = p.name; });
+      var stars = function (n) { var s = ""; for (var i = 1; i <= 5; i++) s += i <= n ? "\u2605" : "\u2606"; return s; };
+      view.innerHTML = '<p style="color:var(--muted);margin:0 0 18px">New reviews wait here until you approve them. Only approved reviews show in the shop.</p>' +
+        (list.length ? '<div class="products">' + list.map(function (v) {
+          return '<article class="card review-card' + (v.approved ? "" : " pending") + '"><div class="review-top"><div><span class="stars">' + stars(v.rating) + '</span> <strong>' + esc(v.name) + '</strong>' +
+            (v.verified ? ' <span class="tag Completed">Verified buyer</span>' : "") + (v.approved ? ' <span class="tag Shipped">Live</span>' : ' <span class="tag Awaiting">Waiting</span>') +
+            '<div class="meta">' + esc(names[v.slug] || v.slug) + ' \u00b7 ' + fmtDate(v.date) + '</div></div>' +
+            '<div class="btns">' + (v.approved ? '<button class="btn btn--ghost btn--sm" data-hide="' + v.id + '">Hide</button>' : '<button class="btn btn--sm" data-approve="' + v.id + '">Approve</button>') +
+            '<button class="btn btn--danger btn--sm" data-delrev="' + v.id + '">Delete</button></div></div><p>' + esc(v.text) + '</p></article>';
+        }).join("") + '</div>' : '<div class="card"><p class="hint" style="margin:0">No reviews yet.</p></div>');
+      view.querySelectorAll("[data-approve],[data-hide]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var ok = b.hasAttribute("data-approve");
+          DB.approveReview(+(b.getAttribute("data-approve") || b.getAttribute("data-hide")), ok).then(function () { toast(ok ? "Review is live" : "Review hidden"); refresh(); }, fail);
+        });
+      });
+      view.querySelectorAll("[data-delrev]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          if (!confirm("Delete this review?")) return;
+          DB.deleteReview(+b.getAttribute("data-delrev")).then(function () { toast("Review deleted"); refresh(); }, fail);
+        });
+      });
+    });
+  }
+
+  // ======================= Discount codes =======================
+  function describe(d) {
+    var what = d.kind === "percent" ? (+d.value) + "% off" : d.kind === "amount" ? money(d.value) + " off" : "Free delivery";
+    return what + (d.minSubtotal > 0 ? " on bags over " + money(d.minSubtotal) : "");
+  }
+  function renderDiscounts() {
+    return DB.discounts().then(function (list) {
+      view.innerHTML =
+        '<section class="card" style="margin-bottom:16px"><h2>New code</h2><p class="hint">Customers type it at checkout. Codes are not case-sensitive.</p>' +
+        '<form id="dc-form" class="dc-form">' +
+        '<div class="field"><label for="dc-code">Code</label><input id="dc-code" required maxlength="40" placeholder="WELCOME10" style="text-transform:uppercase"></div>' +
+        '<div class="field"><label for="dc-kind">Type</label><select id="dc-kind"><option value="percent">% off</option><option value="amount">\u00a3 off</option><option value="freeship">Free delivery</option></select></div>' +
+        '<div class="field" id="dc-value-wrap"><label for="dc-value">Amount</label><input id="dc-value" type="number" min="0" step="0.01" value="10"></div>' +
+        '<div class="field"><label for="dc-min">Minimum bag (\u00a3)</label><input id="dc-min" type="number" min="0" step="0.01" value="0"></div>' +
+        '<div class="field"><label for="dc-max">Max uses (blank = no limit)</label><input id="dc-max" type="number" min="1" step="1"></div>' +
+        '<div class="field dc-btn"><button class="btn" type="submit">Create code</button></div></form></section>' +
+        '<div class="table-wrap"><table class="data"><thead><tr><th>Code</th><th>Gives</th><th>Used</th><th>Status</th><th class="num"><span class="sr-only">Actions</span></th></tr></thead><tbody>' +
+        (list.length ? list.map(function (d) {
+          return '<tr><td><strong>' + esc(d.code) + '</strong></td><td>' + esc(describe(d)) + '</td><td>' + d.usedCount + (d.maxUses ? " / " + d.maxUses : "") + '</td>' +
+            '<td><span class="tag ' + (d.active ? "Completed" : "Cancelled") + '">' + (d.active ? "Active" : "Paused") + '</span></td>' +
+            '<td class="num"><button class="btn btn--ghost btn--sm" data-toggle="' + esc(d.code) + '">' + (d.active ? "Pause" : "Resume") + '</button> ' +
+            '<button class="btn btn--danger btn--sm" data-deldc="' + esc(d.code) + '">Delete</button></td></tr>';
+        }).join("") : '<tr><td colspan="5" class="empty-row">No codes yet.</td></tr>') + '</tbody></table></div>';
+
+      var kind = document.getElementById("dc-kind"), valWrap = document.getElementById("dc-value-wrap");
+      kind.addEventListener("change", function () { valWrap.hidden = kind.value === "freeship"; });
+      document.getElementById("dc-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var max = document.getElementById("dc-max").value;
+        DB.saveDiscount({
+          code: document.getElementById("dc-code").value, kind: kind.value,
+          value: parseFloat(document.getElementById("dc-value").value) || 0,
+          minSubtotal: parseFloat(document.getElementById("dc-min").value) || 0,
+          maxUses: max === "" ? null : parseInt(max, 10), active: true
+        }).then(function (d) { toast("Code " + d.code + " created"); refresh(); }, fail);
+      });
+      view.querySelectorAll("[data-toggle]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var d = list.filter(function (x) { return x.code === b.getAttribute("data-toggle"); })[0];
+          DB.saveDiscount({ code: d.code, kind: d.kind, value: d.value, minSubtotal: d.minSubtotal, maxUses: d.maxUses, active: !d.active })
+            .then(function () { toast(d.active ? "Code paused" : "Code active"); refresh(); }, fail);
+        });
+      });
+      view.querySelectorAll("[data-deldc]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          if (!confirm("Delete code " + b.getAttribute("data-deldc") + "?")) return;
+          DB.deleteDiscount(b.getAttribute("data-deldc")).then(function () { toast("Code deleted"); refresh(); }, fail);
+        });
+      });
+    });
+  }
+
+  // ======================= Reports =======================
+  function renderReports() {
+    return Promise.all([DB.orders(), DB.products()]).then(function (r) {
+      var paid = r[0].filter(counts), months = {}, byProduct = {};
+      paid.forEach(function (o) {
+        var d = new Date(o.date), key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+        var m = months[key] || (months[key] = { orders: 0, units: 0, sales: 0, discount: 0, delivery: 0 });
+        m.orders++; m.sales += o.totals.total; m.discount += o.totals.discount || 0; m.delivery += o.totals.ship;
+        o.items.forEach(function (l) {
+          m.units += l.qty;
+          var p = byProduct[l.name + " \u00b7 " + l.size] || (byProduct[l.name + " \u00b7 " + l.size] = { units: 0, sales: 0 });
+          p.units += l.qty; p.sales += l.price * l.qty;
+        });
+      });
+      var keys = Object.keys(months).sort().reverse();
+      var label = function (k) { var p = k.split("-"); return new Date(+p[0], +p[1] - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" }); };
+      var prods = Object.keys(byProduct).sort(function (a, b) { return byProduct[b].sales - byProduct[a].sales; });
+      view.innerHTML =
+        '<p style="color:var(--muted);margin:0 0 18px">Paid orders only (not awaiting payment, refunded or cancelled).</p>' +
+        '<section class="card" style="margin-bottom:16px"><div class="report-head"><h2>By month</h2><button class="btn btn--ghost btn--sm" id="rp-csv"' + (keys.length ? "" : " disabled") + '>Export CSV</button></div>' +
+        '<div class="table-wrap" style="border:0"><table class="data"><thead><tr><th>Month</th><th class="num">Orders</th><th class="num">Units</th><th class="num">Discounts</th><th class="num">Delivery</th><th class="num">Takings</th></tr></thead><tbody>' +
+        (keys.length ? keys.map(function (k) {
+          var m = months[k];
+          return '<tr><td>' + label(k) + '</td><td class="num">' + m.orders + '</td><td class="num">' + m.units + '</td><td class="num">' + money(m.discount) + '</td><td class="num">' + money(m.delivery) + '</td><td class="num"><strong>' + money(m.sales) + '</strong></td></tr>';
+        }).join("") : '<tr><td colspan="6" class="empty-row">No paid orders yet.</td></tr>') + '</tbody></table></div></section>' +
+        '<section class="card"><h2>By product</h2><p class="hint">All time</p><div class="table-wrap" style="border:0"><table class="data"><thead><tr><th>Product</th><th class="num">Units</th><th class="num">Sales</th></tr></thead><tbody>' +
+        (prods.length ? prods.map(function (k) { return '<tr><td>' + esc(k) + '</td><td class="num">' + byProduct[k].units + '</td><td class="num">' + money(byProduct[k].sales) + '</td></tr>'; }).join("")
+          : '<tr><td colspan="3" class="empty-row">No sales yet.</td></tr>') + '</tbody></table></div></section>';
+      var b = document.getElementById("rp-csv");
+      if (b) b.addEventListener("click", function () {
+        csv("monthly-sales.csv", [["Month", "Orders", "Units", "Discounts", "Delivery", "Takings"]].concat(keys.map(function (k) {
+          var m = months[k]; return [label(k), m.orders, m.units, m.discount.toFixed(2), m.delivery.toFixed(2), m.sales.toFixed(2)];
+        })));
+      });
+    });
+  }
+
+  // ======================= Packing slip / invoice =======================
+  function printDoc(o, invoice) {
+    var gift = o.giftWrap, showPrices = invoice || !gift;
+    var rows = o.items.map(function (l) {
+      return '<tr><td>' + esc(l.name) + '<br><small>' + esc(l.size) + '</small></td><td class="r">' + l.qty + '</td>' +
+        (showPrices ? '<td class="r">' + money(l.price) + '</td><td class="r">' + money(l.price * l.qty) + '</td>' : "") + '</tr>';
+    }).join("");
+    var totals = showPrices ? '<tr><td colspan="3" class="r">Subtotal</td><td class="r">' + money(o.totals.sub) + '</td></tr>' +
+      (o.totals.discount ? '<tr><td colspan="3" class="r">Discount' + (o.discountCode ? " (" + esc(o.discountCode) + ")" : "") + '</td><td class="r">\u2212' + money(o.totals.discount) + '</td></tr>' : "") +
+      '<tr><td colspan="3" class="r">Delivery</td><td class="r">' + (o.totals.ship ? money(o.totals.ship) : "Free") + '</td></tr>' +
+      '<tr class="t"><td colspan="3" class="r">Total</td><td class="r">' + money(o.totals.total) + '</td></tr>' : "";
+    var html = '<!doctype html><html><head><meta charset="utf-8"><title>' + (invoice ? "Invoice " : "Packing slip ") + esc(o.no) + '</title><style>' +
+      'body{font-family:Georgia,serif;color:#3F3A35;margin:40px;font-size:14px}h1{font-weight:400;font-size:28px;margin:0 0 4px}' +
+      '.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #ccc;padding-bottom:18px;margin-bottom:24px}' +
+      'table{width:100%;border-collapse:collapse;margin-top:18px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid #e5e0d8;vertical-align:top}' +
+      '.r{text-align:right}.t td{font-weight:bold;border-top:2px solid #3F3A35}small{color:#6E665E}.gift{border:1px dashed #8A6A45;padding:14px;margin-top:24px}' +
+      '.foot{margin-top:40px;font-size:12px;color:#6E665E}@media print{button{display:none}}</style></head><body>' +
+      '<button onclick="print()" style="float:right">Print</button>' +
+      '<div class="top"><div><h1>AL QAMAR THREADS</h1><div>' + (invoice ? "Invoice" : "Packing slip") + '</div></div>' +
+      '<div class="r"><strong>' + esc(o.no) + '</strong><br>' + fmtDate(o.date) + '</div></div>' +
+      '<p><strong>Deliver to</strong><br>' + esc(o.name) + '<br>' + esc(o.address).replace(/, /g, "<br>") + '</p>' +
+      (invoice ? '<p><strong>Billed to</strong><br>' + esc(o.name) + '<br>' + esc(o.email) + '</p>' : "") +
+      '<table><thead><tr><th>Item</th><th class="r">Qty</th>' + (showPrices ? '<th class="r">Price</th><th class="r">Amount</th>' : "") + '</tr></thead><tbody>' + rows + totals + '</tbody></table>' +
+      (gift ? '<div class="gift"><strong>Gift wrap</strong>' + (o.giftMessage ? '<p>' + esc(o.giftMessage) + '</p>' : "") + '</div>' : "") +
+      (invoice ? '<p style="margin-top:18px">Payment: bank transfer. No VAT charged: Al Qamar Threads Ltd is not VAT-registered.</p>' : "") +
+      '<div class="foot">Al Qamar Threads Ltd \u00b7 hello@alqamarthreads.com \u00b7 30-day returns, plus your 14-day right to cancel.</div></body></html>';
+    var w = window.open("", "_blank");
+    if (!w) { toast("Allow pop-ups to print"); return; }
+    w.document.write(html); w.document.close();
   }
 
   function csv(name, rows) {

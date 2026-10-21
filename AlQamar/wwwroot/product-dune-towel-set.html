@@ -48,6 +48,7 @@
 
       <span class="option-label">Size <span data-size-name></span></span>
       <div class="sizes" role="radiogroup" aria-label="Size"><button type="button" class="size-btn" role="radio" aria-checked="true">3-piece set</button></div>
+      <p class="stock-note" data-stock-note aria-live="polite"></p>
 
       <div class="qty-row">
         <div class="qty" role="group" aria-label="Quantity">
@@ -68,6 +69,12 @@
           <tr><th>Colour</th><td>Apricot</td></tr>
         </table></div></details>
         <details><summary>What is in the set</summary><div class="acc-body"><ul><li>1 face cloth, 30 × 30 cm</li><li>1 hand towel, 50 × 90 cm</li><li>1 bath towel, 70 × 140 cm</li></ul></div></details>
+        <details><summary>Size guide</summary><div class="acc-body"><table class="spec">
+          <tr><th>Face cloth</th><td>30 &times; 30 cm &middot; face and hands</td></tr>
+          <tr><th>Hand towel</th><td>50 &times; 90 cm &middot; hands, guest bathrooms, the gym</td></tr>
+          <tr><th>Bath towel</th><td>70 &times; 140 cm &middot; everyday drying</td></tr>
+          <tr><th>Bath sheet</th><td>90 &times; 160 cm &middot; wraps right round, generous after a bath</td></tr>
+        </table><p style="margin:12px 0 0;font-size:14px">Sizes are before washing. Cotton settles by 3&ndash;5% after the first few washes.</p></div></details>
         <details><summary>Care</summary><div class="acc-body"><ul>
           <li>Machine wash at 40&deg;C with similar colours</li><li>Do not bleach</li>
           <li>Tumble dry low</li><li>Do not iron</li><li>No fabric softener, for best absorbency</li>
@@ -92,6 +99,42 @@
   </div>
 </section>
 
+<section class="section related" data-related hidden style="padding-top:0">
+  <div class="wrap">
+    <div class="center" style="margin-bottom:clamp(36px,5vw,64px)"><span class="eyebrow">Complete the set</span><h2>Pairs well with</h2></div>
+    <div class="product-grid related-grid" data-related-grid></div>
+  </div>
+</section>
+
+<section class="section reviews" id="reviews" style="padding-top:0">
+  <div class="narrow">
+    <div class="center"><span class="eyebrow">Reviews</span><h2>What people say</h2>
+      <p class="review-summary" data-review-summary>No reviews yet. Be the first.</p></div>
+    <div class="review-list" data-review-list></div>
+    <details class="review-form-wrap">
+      <summary class="btn btn--ghost">Write a review</summary>
+      <form class="review-form" data-review-form novalidate>
+        <fieldset class="stars-input"><legend class="option-label">Your rating</legend>
+          <input type="radio" id="r5" name="rating" value="5"><label for="r5" title="5 stars">&#9733;</label>
+          <input type="radio" id="r4" name="rating" value="4"><label for="r4" title="4 stars">&#9733;</label>
+          <input type="radio" id="r3" name="rating" value="3"><label for="r3" title="3 stars">&#9733;</label>
+          <input type="radio" id="r2" name="rating" value="2"><label for="r2" title="2 stars">&#9733;</label>
+          <input type="radio" id="r1" name="rating" value="1"><label for="r1" title="1 star">&#9733;</label>
+        </fieldset>
+        <div class="field"><label for="rv-name">Name</label><input id="rv-name" name="name" maxlength="60" autocomplete="given-name" required></div>
+        <div class="field"><label for="rv-text">Your review</label><textarea id="rv-text" name="text" rows="4" maxlength="1000" required></textarea></div>
+        <p class="sum-note" style="margin:0 0 12px">Bought from us? Add your order number and email to show a &ldquo;Verified buyer&rdquo; badge.</p>
+        <div class="field-row">
+          <div class="field"><label for="rv-no">Order number (optional)</label><input id="rv-no" name="orderNo" placeholder="AQT-10001"></div>
+          <div class="field"><label for="rv-email">Email (optional)</label><input id="rv-email" name="email" type="email" autocomplete="email"></div>
+        </div>
+        <button class="btn" type="submit">Send review</button>
+        <p class="form-msg" role="status"></p>
+      </form>
+    </details>
+  </div>
+</section>
+
 <div class="lightbox" role="dialog" aria-modal="true" aria-label="Image zoom">
   <button class="lightbox-close" aria-label="Close zoom">&times;</button>
   <img alt="">
@@ -110,7 +153,7 @@
       </div>
       <div>
         <h4>Help</h4>
-        <ul><li><a href="shipping-returns.html">Shipping &amp; Returns</a></li><li><a href="terms.html">Terms</a></li><li><a href="privacy.html">Privacy</a></li>
+        <ul><li><a href="track.html">Track your order</a></li><li><a href="shipping-returns.html">Shipping &amp; Returns</a></li><li><a href="terms.html">Terms</a></li><li><a href="privacy.html">Privacy</a></li>
         <li><a href="https://www.instagram.com/" rel="noopener">Instagram</a></li><li><a href="https://www.tiktok.com/" rel="noopener">TikTok</a></li></ul>
       </div>
       <div class="footer-signup">

@@ -29,7 +29,9 @@
     return {
       slug: p.slug, collection: p.collection, colour: p.colour, sizes: p.sizes, img: p.img,
       url: "product-" + p.slug + ".html", name: p.name, prices: p.prices.map(Number),
-      hidden: !!p.hidden, soldOut: !!p.soldOut
+      hidden: !!p.hidden, soldOut: !!p.soldOut,
+      // Units left per size; null means not tracked.
+      stock: (p.stock && p.stock.length === p.sizes.length) ? p.stock : p.sizes.map(function () { return null; })
     };
   }
 
@@ -73,10 +75,14 @@
   }
 
   // The server re-prices the bag from the database and returns the saved order.
-  function placeOrder(cart, customer) {
+  function placeOrder(cart, customer, extra) {
+    extra = extra || {};
     return api("orders", {
       method: "POST",
-      body: { items: cart.map(function (l) { return { slug: l.id, size: l.sizeIndex, qty: l.qty }; }), customer: customer }
+      body: {
+        items: cart.map(function (l) { return { slug: l.id, size: l.sizeIndex, qty: l.qty }; }),
+        customer: customer, gift: extra.gift || null, discountCode: extra.discountCode || null
+      }
     });
   }
 

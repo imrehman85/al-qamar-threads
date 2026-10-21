@@ -46,6 +46,14 @@
       <div class="field"><label for="country">Country</label><select id="country" disabled><option>United Kingdom</option></select></div>
       <div class="radio-card"><span>Royal Mail Tracked 48</span><span>&pound;3.99 &middot; free over &pound;50</span></div>
     </fieldset>
+    <fieldset><legend>Gift</legend>
+      <label class="check"><input type="checkbox" name="giftwrap"> Gift wrap this order (free)</label>
+      <div class="field" data-gift-message hidden>
+        <label for="giftmsg">Gift message (optional)</label>
+        <textarea id="giftmsg" name="giftmsg" rows="3" maxlength="200" placeholder="We&rsquo;ll handwrite it on a card"></textarea>
+        <p class="sum-note" style="margin:6px 0 0">Gift orders ship without prices on the packing slip.</p>
+      </div>
+    </fieldset>
     <fieldset><legend>Payment</legend>
       <div class="card-mock">Bank transfer. After you order we email our bank details. We dispatch as soon as your payment arrives.</div>
     </fieldset>
@@ -56,6 +64,11 @@
   <aside class="summary" aria-label="Order summary">
     <h2>Your order</h2>
     <div data-checkout-summary></div>
+    <div class="discount-box">
+      <label class="option-label" for="discount">Discount code</label>
+      <div class="discount-row"><input id="discount" autocomplete="off" placeholder="Enter code"><button type="button" class="btn btn--ghost" data-apply-discount>Apply</button></div>
+      <p class="form-msg" data-discount-msg role="status"></p>
+    </div>
     <p class="sum-note">Prices include no VAT. We are not VAT-registered.</p>
   </aside>
 </div></section>
@@ -73,7 +86,7 @@
       </div>
       <div>
         <h4>Help</h4>
-        <ul><li><a href="shipping-returns.html">Shipping &amp; Returns</a></li><li><a href="terms.html">Terms</a></li><li><a href="privacy.html">Privacy</a></li>
+        <ul><li><a href="track.html">Track your order</a></li><li><a href="shipping-returns.html">Shipping &amp; Returns</a></li><li><a href="terms.html">Terms</a></li><li><a href="privacy.html">Privacy</a></li>
         <li><a href="https://www.instagram.com/" rel="noopener">Instagram</a></li><li><a href="https://www.tiktok.com/" rel="noopener">TikTok</a></li></ul>
       </div>
       <div class="footer-signup">

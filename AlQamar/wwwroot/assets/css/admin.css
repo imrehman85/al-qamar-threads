@@ -187,3 +187,30 @@ table.data select { padding: 6px 8px; border: 1px solid var(--line); border-radi
 .kv dt { color: var(--muted); }
 .kv dd { margin: 0; }
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--sidebar); color: #fff; padding: 10px 18px; border-radius: var(--radius); font-size: 14px; z-index: 30; }
+
+/* Low stock */
+.low-stock { margin-bottom: 16px; border-color: #E8D3B0; background: #FFFBF4; }
+.low-stock ul { list-style: none; margin: 0 0 14px; padding: 0; }
+.low-stock li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.low-stock strong { font-weight: 400; color: var(--warn); }
+
+/* Product stock inputs */
+.stock-head { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; margin: 16px 0 10px; font-weight: 400; }
+.stock-head span { text-transform: none; letter-spacing: 0; color: var(--muted); font-size: 13px; }
+.price-grid label .out { font-weight: 400; color: var(--bad); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-left: 4px; }
+
+/* Reviews */
+.review-card.pending { border-color: #E8D3B0; }
+.review-top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.review-top .meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.review-top .btns { display: flex; gap: 8px; }
+.review-card p { margin: 12px 0 0; }
+.stars { color: var(--bronze); letter-spacing: 1px; }
+
+/* Discount form */
+.dc-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; align-items: end; }
+.dc-form .field { margin: 0; }
+.dc-btn .btn { width: 100%; padding: 13px 18px; }
+
+/* Reports */
+.report-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; }

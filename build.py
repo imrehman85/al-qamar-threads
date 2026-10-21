@@ -79,7 +79,7 @@ FOOTER = f'''<footer class="site-footer">
       </div>
       <div>
         <h4>Help</h4>
-        <ul><li><a href="shipping-returns.html">Shipping &amp; Returns</a></li><li><a href="terms.html">Terms</a></li><li><a href="privacy.html">Privacy</a></li>
+        <ul><li><a href="track.html">Track your order</a></li><li><a href="shipping-returns.html">Shipping &amp; Returns</a></li><li><a href="terms.html">Terms</a></li><li><a href="privacy.html">Privacy</a></li>
         <li><a href="https://www.instagram.com/" rel="noopener">Instagram</a></li><li><a href="https://www.tiktok.com/" rel="noopener">TikTok</a></li></ul>
       </div>
       <div class="footer-signup">
@@ -188,6 +188,12 @@ home = f'''<section class="hero">
       <div class="collection-card reveal">
         {pic(PHOTOS["cloud_bed"], "ratio-34", "A white bed in soft morning light", "(max-width: 800px) 100vw, 33vw")}
         <h3>Cloud{TM}</h3><p>Bedding, for slow mornings.</p><span class="soon">Coming soon</span>
+        <form class="signup-form notify-form" novalidate data-source="Cloud waitlist">
+          <label class="sr-only" for="cloud-email">Email address</label>
+          <input id="cloud-email" type="email" name="email" placeholder="Email me when it&rsquo;s ready" autocomplete="email" required>
+          <button type="submit">Notify me</button>
+        </form>
+        <p class="form-msg" role="status"></p>
       </div>
     </div>
   </div>
@@ -292,6 +298,7 @@ def product_page(p):
 
       <span class="option-label">Size <span data-size-name></span></span>
       <div class="sizes" role="radiogroup" aria-label="Size">{sizes}</div>
+      <p class="stock-note" data-stock-note aria-live="polite"></p>
 
       <div class="qty-row">
         <div class="qty" role="group" aria-label="Quantity">
@@ -312,6 +319,12 @@ def product_page(p):
           <tr><th>Colour</th><td>{p["colour"]}</td></tr>
         </table></div></details>
         {set_block}
+        <details><summary>Size guide</summary><div class="acc-body"><table class="spec">
+          <tr><th>Face cloth</th><td>30 &times; 30 cm &middot; face and hands</td></tr>
+          <tr><th>Hand towel</th><td>50 &times; 90 cm &middot; hands, guest bathrooms, the gym</td></tr>
+          <tr><th>Bath towel</th><td>70 &times; 140 cm &middot; everyday drying</td></tr>
+          <tr><th>Bath sheet</th><td>90 &times; 160 cm &middot; wraps right round, generous after a bath</td></tr>
+        </table><p style="margin:12px 0 0;font-size:14px">Sizes are before washing. Cotton settles by 3&ndash;5% after the first few washes.</p></div></details>
         <details><summary>Care</summary><div class="acc-body"><ul>
           <li>Machine wash at 40&deg;C with similar colours</li><li>Do not bleach</li>
           <li>Tumble dry low</li><li>Do not iron</li><li>No fabric softener, for best absorbency</li>
@@ -333,6 +346,42 @@ def product_page(p):
   <div class="narrow center reveal" style="margin-top:clamp(64px,8vw,120px)">
     <h2>Soft from the first wash.</h2>
     <p class="lede">Long cotton fibres, woven densely, finished by hand.</p>
+  </div>
+</section>
+
+<section class="section related" data-related hidden style="padding-top:0">
+  <div class="wrap">
+    <div class="center" style="margin-bottom:clamp(36px,5vw,64px)"><span class="eyebrow">Complete the set</span><h2>Pairs well with</h2></div>
+    <div class="product-grid related-grid" data-related-grid></div>
+  </div>
+</section>
+
+<section class="section reviews" id="reviews" style="padding-top:0">
+  <div class="narrow">
+    <div class="center"><span class="eyebrow">Reviews</span><h2>What people say</h2>
+      <p class="review-summary" data-review-summary>No reviews yet. Be the first.</p></div>
+    <div class="review-list" data-review-list></div>
+    <details class="review-form-wrap">
+      <summary class="btn btn--ghost">Write a review</summary>
+      <form class="review-form" data-review-form novalidate>
+        <fieldset class="stars-input"><legend class="option-label">Your rating</legend>
+          <input type="radio" id="r5" name="rating" value="5"><label for="r5" title="5 stars">&#9733;</label>
+          <input type="radio" id="r4" name="rating" value="4"><label for="r4" title="4 stars">&#9733;</label>
+          <input type="radio" id="r3" name="rating" value="3"><label for="r3" title="3 stars">&#9733;</label>
+          <input type="radio" id="r2" name="rating" value="2"><label for="r2" title="2 stars">&#9733;</label>
+          <input type="radio" id="r1" name="rating" value="1"><label for="r1" title="1 star">&#9733;</label>
+        </fieldset>
+        <div class="field"><label for="rv-name">Name</label><input id="rv-name" name="name" maxlength="60" autocomplete="given-name" required></div>
+        <div class="field"><label for="rv-text">Your review</label><textarea id="rv-text" name="text" rows="4" maxlength="1000" required></textarea></div>
+        <p class="sum-note" style="margin:0 0 12px">Bought from us? Add your order number and email to show a &ldquo;Verified buyer&rdquo; badge.</p>
+        <div class="field-row">
+          <div class="field"><label for="rv-no">Order number (optional)</label><input id="rv-no" name="orderNo" placeholder="AQT-10001"></div>
+          <div class="field"><label for="rv-email">Email (optional)</label><input id="rv-email" name="email" type="email" autocomplete="email"></div>
+        </div>
+        <button class="btn" type="submit">Send review</button>
+        <p class="form-msg" role="status"></p>
+      </form>
+    </details>
   </div>
 </section>
 
@@ -421,6 +470,14 @@ checkout = '''<section class="page-intro" style="padding-bottom:40px"><div class
       <div class="field"><label for="country">Country</label><select id="country" disabled><option>United Kingdom</option></select></div>
       <div class="radio-card"><span>Royal Mail Tracked 48</span><span>&pound;3.99 &middot; free over &pound;50</span></div>
     </fieldset>
+    <fieldset><legend>Gift</legend>
+      <label class="check"><input type="checkbox" name="giftwrap"> Gift wrap this order (free)</label>
+      <div class="field" data-gift-message hidden>
+        <label for="giftmsg">Gift message (optional)</label>
+        <textarea id="giftmsg" name="giftmsg" rows="3" maxlength="200" placeholder="We&rsquo;ll handwrite it on a card"></textarea>
+        <p class="sum-note" style="margin:6px 0 0">Gift orders ship without prices on the packing slip.</p>
+      </div>
+    </fieldset>
     <fieldset><legend>Payment</legend>
       <div class="card-mock">Bank transfer. After you order we email our bank details. We dispatch as soon as your payment arrives.</div>
     </fieldset>
@@ -431,6 +488,11 @@ checkout = '''<section class="page-intro" style="padding-bottom:40px"><div class
   <aside class="summary" aria-label="Order summary">
     <h2>Your order</h2>
     <div data-checkout-summary></div>
+    <div class="discount-box">
+      <label class="option-label" for="discount">Discount code</label>
+      <div class="discount-row"><input id="discount" autocomplete="off" placeholder="Enter code"><button type="button" class="btn btn--ghost" data-apply-discount>Apply</button></div>
+      <p class="form-msg" data-discount-msg role="status"></p>
+    </div>
     <p class="sum-note">Prices include no VAT. We are not VAT-registered.</p>
   </aside>
 </div></section>'''
@@ -444,7 +506,7 @@ page("order-confirmation.html", "Thank You", "Your order is confirmed.", '''<sec
   </div>
   <h3 style="margin-top:24px">What happens next</h3>
   <p class="lede">We pack your order within one working day. Royal Mail Tracked 48 usually arrives two to three working days later, and we&rsquo;ll email your tracking link.</p>
-  <p style="margin-top:40px"><a class="btn" href="shop.html">Continue shopping</a></p>
+  <p style="margin-top:40px"><a class="btn" href="shop.html">Continue shopping</a> <a class="btn btn--ghost" href="track.html" style="margin-left:8px">Track your order</a></p>
 </div></section>''')
 
 # ---------- Account ----------
@@ -466,6 +528,20 @@ page("account.html", "My Account", "Sign in to your Al Qamar Threads account.", 
 </div></section>''')
 
 # ---------- 404 ----------
+# ---------- Track order ----------
+page("track.html", "Track Your Order", "Check the status of your Al Qamar Threads order.", '''<section class="page-intro"><div class="narrow"><h1>Track your order</h1><p class="lede">Enter your order number and the email you ordered with.</p></div></section>
+<section class="section" style="padding-top:0"><div class="narrow">
+  <form class="track-form" data-track-form novalidate>
+    <div class="field-row">
+      <div class="field"><label for="tr-no">Order number</label><input id="tr-no" name="no" placeholder="AQT-10001" required></div>
+      <div class="field"><label for="tr-email">Email</label><input id="tr-email" name="email" type="email" autocomplete="email" required></div>
+    </div>
+    <button class="btn" type="submit">Track order</button>
+    <p class="form-msg" role="alert"></p>
+  </form>
+  <div data-track-result></div>
+</div></section>''')
+
 page("404.html", "Page Not Found", "This page could not be found.", '''<section class="section"><div class="narrow center">
   <h1>This page has drifted.</h1><p class="lede">Let&rsquo;s take you somewhere calmer.</p>
   <p style="margin-top:36px"><a class="btn" href="index.html">Back to home</a></p></div></section>''')

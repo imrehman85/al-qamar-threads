@@ -96,10 +96,18 @@
     var product = null, sizeIdx = document.querySelectorAll(".size-btn").length > 1 ? 1 : 0;
     addBtn.disabled = true;
 
+    var stockNote = document.querySelector("[data-stock-note]");
+    function left(i) { return product && product.stock[i] != null ? product.stock[i] : Infinity; }
     function showPrice() {
       if (!product) return;
       priceEl.textContent = money(product.prices[sizeIdx]);
       if (sizeName) sizeName.textContent = product.sizes[sizeIdx];
+      var n = left(sizeIdx), blocked = product.soldOut || product.hidden;
+      if (stockNote) stockNote.textContent = blocked ? "" : n === 0 ? "Sold out in this size." : n <= 3 ? "Only " + n + " left in this size." : "";
+      if (!blocked) {
+        addBtn.disabled = n === 0;
+        addBtn.textContent = n === 0 ? "Sold out" : "Add to bag";
+      }
     }
     A.loadCatalog().then(function (cat) {
       product = cat.filter(function (p) { return p.slug === id; })[0];
@@ -109,8 +117,15 @@
         document.querySelector(".product-info .product-desc").insertAdjacentHTML("afterend", '<p class="sum-note">This piece is not currently available.</p>');
       }
       if (product.soldOut || product.hidden) addBtn.textContent = product.hidden ? "Unavailable" : "Sold out";
-      else addBtn.disabled = false;
+      // Mark sizes that have run out, and start on one that is available.
+      document.querySelectorAll(".size-btn").forEach(function (b, i) {
+        if (left(i) === 0) { b.classList.add("is-out"); b.setAttribute("aria-label", product.sizes[i] + ", sold out"); }
+      });
+      if (left(sizeIdx) === 0) {
+        for (var i = 0; i < product.sizes.length; i++) if (left(i) > 0) { document.querySelectorAll(".size-btn")[i].click(); break; }
+      }
       showPrice();
+      renderRelated(cat);
     });
 
     document.querySelectorAll(".size-btn").forEach(function (b, i) {
@@ -128,14 +143,69 @@
 
     addBtn.addEventListener("click", function () {
       if (addBtn.disabled || !product) return;
-      var qty = Math.max(1, Math.min(10, parseInt(qtyInput.value, 10) || 1));
+      var cap = Math.min(10, left(sizeIdx));
+      var qty = Math.max(1, Math.min(cap, parseInt(qtyInput.value, 10) || 1));
       var size = product.sizes[sizeIdx], price = product.prices[sizeIdx];
       var cart = getCart();
       var line = cart.filter(function (l) { return l.id === id && l.sizeIndex === sizeIdx; })[0];
-      if (line) { line.qty = Math.min(10, line.qty + qty); line.price = price; }
+      if (line) { line.qty = Math.min(cap, line.qty + qty); line.price = price; }
       else cart.push({ id: id, name: product.name, colour: product.colour, size: size, sizeIndex: sizeIdx, price: price, qty: qty, img: product.img, url: product.url });
       setCart(cart);
       document.querySelector(".added-msg").innerHTML = "Added to your bag. <a class=\"text-link\" href=\"cart.html\">View bag</a>";
+    });
+
+    // Complete the set: the other piece in this collection, then the same piece in other colours.
+    function renderRelated(cat) {
+      var box = document.querySelector("[data-related]"), grid = document.querySelector("[data-related-grid]");
+      if (!box || !grid) return;
+      var isSet = /set/.test(id);
+      var picks = cat.filter(function (p) { return p.slug !== id && !p.hidden; }).sort(function (a, b) {
+        // 0: other piece, same colour · 1: same piece, other colour · 2: anything else
+        var score = function (p) {
+          var sameType = /set/.test(p.slug) === isSet;
+          return p.collection === product.collection ? (sameType ? 3 : 0) : (sameType ? 1 : 2);
+        };
+        return score(a) - score(b);
+      }).slice(0, 2);
+      if (!picks.length) return;
+      grid.innerHTML = picks.map(function (p) {
+        return '<a class="product-card" href="' + p.url + '"><div class="pic ratio-45"><img src="' + A.imgUrl(p.img, 800) + '" alt="' + esc(p.name) + '" loading="lazy"></div>' +
+          '<h3>' + esc(p.name) + '</h3><p class="price">' + A.fromPrice(p) + (p.soldOut ? " \u00b7 Sold out" : "") + '</p></a>';
+      }).join("");
+      box.hidden = false;
+    }
+
+    // Reviews
+    var rvList = document.querySelector("[data-review-list]"), rvSummary = document.querySelector("[data-review-summary]");
+    function stars(n) { var s = ""; for (var i = 1; i <= 5; i++) s += i <= Math.round(n) ? "\u2605" : "\u2606"; return s; }
+    function loadReviews() {
+      if (!rvList) return;
+      A.api("reviews?slug=" + encodeURIComponent(id)).then(function (r) {
+        if (!r.count) return;
+        rvSummary.innerHTML = '<span class="stars" aria-hidden="true">' + stars(r.average) + '</span> ' + r.average + ' out of 5 \u00b7 ' + r.count + (r.count === 1 ? " review" : " reviews");
+        rvList.innerHTML = r.reviews.map(function (v) {
+          return '<article class="review"><div class="review-head"><span class="stars" aria-label="' + v.rating + ' out of 5 stars">' + stars(v.rating) + '</span>' +
+            '<strong>' + esc(v.name) + '</strong>' + (v.verified ? '<span class="verified">Verified buyer</span>' : "") +
+            '<span class="review-date">' + new Date(v.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + '</span></div>' +
+            '<p>' + esc(v.text) + '</p></article>';
+        }).join("");
+      }, function () { /* reviews are optional */ });
+    }
+    loadReviews();
+    var rvForm = document.querySelector("[data-review-form]");
+    if (rvForm) rvForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var msg = rvForm.querySelector(".form-msg"), btn = rvForm.querySelector("button[type=submit]");
+      var rating = rvForm.querySelector("input[name=rating]:checked");
+      if (!rating) { msg.textContent = "Please choose a star rating."; return; }
+      btn.disabled = true; msg.textContent = "";
+      A.api("reviews", { method: "POST", body: {
+        slug: id, rating: +rating.value, name: rvForm.name.value, text: rvForm.text.value,
+        orderNo: rvForm.orderNo.value, email: rvForm.email.value
+      } }).then(function () {
+        rvForm.reset();
+        msg.textContent = "Thank you. Your review will appear once we\u2019ve read it.";
+      }, function (x) { msg.textContent = x.message; }).then(function () { btn.disabled = false; });
     });
 
     // Gallery
@@ -218,17 +288,40 @@
   // Checkout — summary shows product names only
   var co = document.querySelector("[data-checkout-summary]");
   if (co) {
-    var cart = getCart(), t = cartTotals(cart);
-    if (!cart.length) {
-      co.innerHTML = '<p class="sum-note">Your bag is empty. <a class="text-link" href="shop.html">Shop the collection</a></p>';
-    } else {
+    var cart = getCart(), applied = null;
+    function renderSummary() {
+      var t = cartTotals(cart);
+      if (!cart.length) {
+        co.innerHTML = '<p class="sum-note">Your bag is empty. <a class="text-link" href="shop.html">Shop the collection</a></p>';
+        return;
+      }
+      var disc = applied ? applied.discount : 0, ship = applied && applied.freeShip ? 0 : t.ship;
       co.innerHTML = cart.map(function (l) {
-        return '<div class="mini-item"><span>' + esc(l.name) + (l.qty > 1 ? " × " + l.qty : "") + '</span><span>' + money(l.price * l.qty) + '</span></div>';
+        return '<div class="mini-item"><span>' + esc(l.name) + (l.qty > 1 ? " \u00d7 " + l.qty : "") + '</span><span>' + money(l.price * l.qty) + '</span></div>';
       }).join("") +
         '<div class="sum-row" style="border-top:1px solid var(--line);margin-top:12px;padding-top:18px"><span>Subtotal</span><span>' + money(t.sub) + '</span></div>' +
-        '<div class="sum-row"><span>Delivery</span><span>' + (t.ship ? money(t.ship) : "Free") + '</span></div>' +
-        '<div class="sum-row total"><span>Total</span><span>' + money(t.total) + '</span></div>';
+        (disc ? '<div class="sum-row discount-line"><span>Discount (' + esc(applied.code) + ')</span><span>\u2212' + money(disc) + '</span></div>' : "") +
+        '<div class="sum-row"><span>Delivery</span><span>' + (ship ? money(ship) : "Free") + '</span></div>' +
+        '<div class="sum-row total"><span>Total</span><span>' + money(t.sub - disc + ship) + '</span></div>';
     }
+    renderSummary();
+
+    var giftBox = document.querySelector("[name=giftwrap]"), giftMsg = document.querySelector("[data-gift-message]");
+    if (giftBox) giftBox.addEventListener("change", function () { giftMsg.hidden = !giftBox.checked; });
+
+    var codeInput = document.getElementById("discount"), codeMsg = document.querySelector("[data-discount-msg]");
+    var applyBtn = document.querySelector("[data-apply-discount]");
+    function applyCode() {
+      var code = codeInput.value.trim();
+      if (!code) { applied = null; codeMsg.textContent = ""; renderSummary(); return; }
+      applyBtn.disabled = true;
+      A.api("discount/check", { method: "POST", body: { code: code, subtotal: cartTotals(cart).sub } }).then(function (r) {
+        applied = r; codeInput.value = r.code; codeMsg.textContent = r.label + " applied.";
+      }, function (x) { applied = null; codeMsg.textContent = x.message; }).then(function () { applyBtn.disabled = false; renderSummary(); });
+    }
+    if (applyBtn) applyBtn.addEventListener("click", applyCode);
+    if (codeInput) codeInput.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); applyCode(); } });
+
     var form = document.querySelector(".checkout-form"), err = document.querySelector("[data-checkout-error]");
     form.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -239,6 +332,9 @@
       A.placeOrder(items, {
         email: form.email.value, firstName: form.fname.value, lastName: form.lname.value,
         address1: form.address1.value, city: form.city.value, postcode: form.postcode.value
+      }, {
+        gift: giftBox && giftBox.checked ? { wrap: true, message: form.giftmsg.value } : null,
+        discountCode: applied ? applied.code : null
       }).then(function (order) {
         order.fname = form.fname.value;
         try { sessionStorage.setItem("aqt-order", JSON.stringify(order)); } catch (x) {}
@@ -260,14 +356,52 @@
       '<p class="lede">We’ve received your order. We’ll email ' + (o.email ? esc(o.email) : "you") + ' our bank details to pay by transfer, and dispatch once payment arrives.</p>' +
       '<div class="summary" style="text-align:left;margin:48px 0">' +
       o.items.map(function (l) { return '<div class="mini-item"><span>' + esc(l.name) + (l.qty > 1 ? " × " + l.qty : "") + '</span><span>' + money(l.price * l.qty) + '</span></div>'; }).join("") +
+      (o.totals.discount ? '<div class="sum-row"><span>Discount' + (o.discountCode ? " (" + esc(o.discountCode) + ")" : "") + '</span><span>\u2212' + money(o.totals.discount) + '</span></div>' : "") +
       '<div class="sum-row"><span>Delivery</span><span>' + (o.totals.ship ? money(o.totals.ship) : "Free") + '</span></div>' +
       '<div class="sum-row total"><span>Total to pay</span><span>' + money(o.totals.total) + '</span></div>' +
+      (o.giftWrap ? '<p class="sum-note">Gift wrapped' + (o.giftMessage ? ", with your message: \u201c" + esc(o.giftMessage) + "\u201d" : "") + '.</p>' : "") +
       (o.address ? '<p class="sum-note" style="margin-bottom:0">Delivering to ' + esc(o.address) + '</p>' : "") + '</div>';
   }
   if (conf) {
     var o = null;
     try { o = JSON.parse(sessionStorage.getItem("aqt-order") || "null"); } catch (e) {}
     if (o) showOrder(o);
+  }
+
+  // Track order
+  var trForm = document.querySelector("[data-track-form]");
+  if (trForm) {
+    var trOut = document.querySelector("[data-track-result]");
+    var STEPS = ["Awaiting payment", "Processing", "Shipped", "Completed"];
+    var LABELS = { "Awaiting payment": "Order received", "Processing": "Paid, being packed", "Shipped": "On its way", "Completed": "Delivered" };
+    function showTrack(o) {
+      var at = STEPS.indexOf(o.status);
+      var steps = at === -1
+        ? '<p class="track-alert">This order was ' + esc(o.status.toLowerCase()) + '. Questions? Email <a class="text-link" href="mailto:hello@alqamarthreads.com">hello@alqamarthreads.com</a>.</p>'
+        : '<ol class="track-steps">' + STEPS.map(function (s, i) {
+            return '<li class="' + (i < at ? "done" : i === at ? "now" : "") + '">' + LABELS[s] + '</li>';
+          }).join("") + '</ol>';
+      trOut.innerHTML = '<div class="summary track-card">' +
+        '<p class="eyebrow">Order ' + esc(o.no) + ' \u00b7 ' + new Date(o.date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) + '</p>' +
+        steps +
+        (o.tracking ? '<p>Royal Mail tracking: <a class="text-link" target="_blank" rel="noopener" href="https://www.royalmail.com/track-your-item#/tracking-results/' + encodeURIComponent(o.tracking) + '">' + esc(o.tracking) + '</a></p>' : "") +
+        (o.status === "Awaiting payment" ? '<p class="sum-note">We\u2019re waiting for your bank transfer. We\u2019ll pack your order as soon as it arrives.</p>' : "") +
+        o.items.map(function (l) { return '<div class="mini-item"><span>' + esc(l.name) + ' <small>' + esc(l.size) + '</small>' + (l.qty > 1 ? " \u00d7 " + l.qty : "") + '</span><span>' + money(l.price * l.qty) + '</span></div>'; }).join("") +
+        '<div class="sum-row total"><span>Total</span><span>' + money(o.totals.total) + '</span></div></div>';
+    }
+    trForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var msg = trForm.querySelector(".form-msg"), btn = trForm.querySelector("button");
+      msg.textContent = ""; btn.disabled = true;
+      A.api("orders/track?no=" + encodeURIComponent(trForm.no.value.trim()) + "&email=" + encodeURIComponent(trForm.email.value.trim()))
+        .then(showTrack, function (x) { trOut.innerHTML = ""; msg.textContent = x.message; })
+        .then(function () { btn.disabled = false; });
+    });
+    // Arriving from the thank-you page fills the order number in.
+    try {
+      var last = JSON.parse(sessionStorage.getItem("aqt-order") || "null");
+      if (last) { trForm.no.value = last.no || ""; trForm.email.value = last.email || ""; }
+    } catch (e) {}
   }
 
   updateCount();
