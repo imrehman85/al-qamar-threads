@@ -70,6 +70,20 @@ void TryInitialiseDb(IServiceProvider services)
 }
 TryInitialiseDb(app.Services);
 
+// Somee's free hosting appends an ad script after every HTML response, past its Content-Length.
+// On a reused keep-alive connection those extra bytes corrupt the next response and the browser
+// shows a blank page until a refresh. Closing the connection after HTML responses discards them.
+app.Use((ctx, next) =>
+{
+    ctx.Response.OnStarting(() =>
+    {
+        if (ctx.Response.ContentType?.StartsWith("text/html", StringComparison.OrdinalIgnoreCase) == true)
+            ctx.Response.Headers.Connection = "close";
+        return Task.CompletedTask;
+    });
+    return next();
+});
+
 app.UseStatusCodePagesWithReExecute("/404.html");
 app.UseDefaultFiles();
 app.UseStaticFiles();
