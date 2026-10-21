@@ -1,7 +1,15 @@
 """Builds the Al Qamar Threads pages into AlQamar/wwwroot. Run: python build.py"""
+import hashlib
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).parent / "AlQamar" / "wwwroot"
+
+
+def asset(path):
+    """Link to a CSS/JS file with a version taken from its contents, so browsers fetch it again when it changes."""
+    digest = hashlib.sha1((ROOT / path).read_bytes()).hexdigest()[:10]
+    return f"{path}?v={digest}"
 SITE = "Al Qamar Threads"
 TM = "™"
 
@@ -110,7 +118,7 @@ def page(filename, title, desc, body, active=""):
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="{asset('assets/css/style.css')}">
 </head>
 <body>
 {header(active)}
@@ -118,8 +126,8 @@ def page(filename, title, desc, body, active=""):
 {body}
 </main>
 {FOOTER}
-<script src="assets/js/catalog.js" defer></script>
-<script src="assets/js/main.js" defer></script>
+<script src="{asset('assets/js/catalog.js')}" defer></script>
+<script src="{asset('assets/js/main.js')}" defer></script>
 </body>
 </html>
 '''
@@ -545,3 +553,9 @@ page("track.html", "Track Your Order", "Check the status of your Al Qamar Thread
 page("404.html", "Page Not Found", "This page could not be found.", '''<section class="section"><div class="narrow center">
   <h1>This page has drifted.</h1><p class="lede">Let&rsquo;s take you somewhere calmer.</p>
   <p style="margin-top:36px"><a class="btn" href="index.html">Back to home</a></p></div></section>''')
+
+# ---------- Admin page (hand-written): refresh its asset versions ----------
+admin = ROOT / "admin.html"
+html = re.sub(r'(assets/(?:css|js)/[\w.-]+\.(?:css|js))(\?v=\w+)?', lambda m: asset(m.group(1)), admin.read_text(encoding="utf-8"))
+admin.write_text(html, encoding="utf-8")
+print("versioned admin.html")

@@ -88,7 +88,11 @@ app.Use((ctx, next) =>
 // The friendly 404 page is for browsers; API callers keep their real status codes (e.g. 429).
 app.UseWhen(ctx => !ctx.Request.Path.StartsWithSegments("/api"), b => b.UseStatusCodePagesWithReExecute("/404.html"));
 app.UseDefaultFiles();
-app.UseStaticFiles();
+// Browsers check back for changed files (cheap 304s); CSS/JS links also carry a content version.
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = "no-cache"
+});
 app.Use(async (ctx, next) =>
 {
     if (!dbReady && ctx.Request.Path.StartsWithSegments("/api")) TryInitialiseDb(app.Services);
